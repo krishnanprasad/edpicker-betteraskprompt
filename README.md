@@ -12,9 +12,39 @@ View your app in AI Studio: https://ai.studio/apps/drive/1reL0AgPKzW96gftZ7FcMdH
 
 **Prerequisites:**  Node.js
 
+### Frontend + Backend Setup
+
+This application now uses a backend Express server to securely handle Gemini API calls, keeping your API key safe and never exposing it in the frontend bundle.
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   ```bash
+   npm install
+   ```
+
+2. Set your Gemini API key as an environment variable:
+   ```bash
+   export GEMINI_API_KEY=your_api_key_here
+   ```
+   
+   Or create a `.env` file in the root directory:
+   ```
+   GEMINI_API_KEY=your_api_key_here
+   ```
+
+3. Start the backend server (in one terminal):
+   ```bash
+   npm run server:start
+   ```
+
+4. Start the Angular development server (in another terminal):
+   ```bash
+   npm run dev
+   ```
+
+5. Access the application at `http://localhost:3000`
+
+### Architecture
+
+- **Frontend**: Angular application that runs in the browser
+- **Backend**: Express server (TypeScript) that handles API requests to Gemini
+- **Security**: API key is stored as an environment variable on the server, never exposed to the client
