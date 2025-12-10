@@ -7,7 +7,7 @@ const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
   console.error('GEMINI_API_KEY not set. Requests to /api/gemini/analyze will fail.');
 }
-const genAI = new GoogleGenAI({ apiKey });
+const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const schema = {
   type: Type.OBJECT,
@@ -35,6 +35,10 @@ const schema = {
 router.post('/analyze', async (req: Request, res: Response) => {
   const { studentPrompt } = req.body;
   if (!studentPrompt) return res.status(400).json({ error: 'studentPrompt is required' });
+
+  if (!genAI) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server.' });
+  }
 
   try {
     const systemInstruction = `You are an expert prompt engineering coach for high school and college students. Your goal is to analyze a student's prompt and help them improve it for better results.`;
