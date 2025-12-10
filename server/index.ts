@@ -1,10 +1,9 @@
 import express from 'express';
-import bodyParser from 'body-parser';
 import geminiRouter from './routes/gemini';
 import path from 'path';
 
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json());
 app.use('/api/gemini', geminiRouter);
 
 // Serve static frontend build if present (optional)
