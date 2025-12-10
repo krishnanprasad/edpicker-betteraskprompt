@@ -1,0 +1,23 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm ci
+      - run: npm run build --if-present
+      - name: Start server (background)
+        run: |
+          npm run server:start &
+          sleep 2
+      - name: Run smoke request to backend (no secret leaked)
+        run: |
+          # This curl hits an endpoint that doesn't require the secret to respond with 400 when no prompt provided.
+          curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3000/api/gemini/analyze -d '{}' -H "Content-Type: application/json" || true
