@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pages: write
-      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,7 +23,7 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build --if-present
+        run: npm run build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v1
