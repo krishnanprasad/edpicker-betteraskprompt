@@ -1,7 +1,7 @@
 
 import { ChangeDetectionStrategy, Component, inject, signal, computed } from '@angular/core';
-import { GeminiService } from '../../services/gemini.service.ts';
-import { PromptAnalysis } from '../../models/prompt-analysis.model.ts';
+import { GeminiService } from '../../services/gemini.service';
+import { PromptAnalysis } from '../../models/prompt-analysis.model';
 
 @Component({
   selector: 'app-prompt-analyzer',
