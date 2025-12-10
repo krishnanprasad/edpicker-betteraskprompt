@@ -1,7 +1,7 @@
 
 import { Injectable } from '@angular/core';
 import { GoogleGenAI, Type } from "@google/genai";
-import { PromptAnalysis } from '../models/prompt-analysis.model.ts';
+import { PromptAnalysis } from '../models/prompt-analysis.model';
 
 @Injectable({
   providedIn: 'root'
