@@ -25,3 +25,6 @@ dist-ssr
 
 # local env files
 .env
+
+# package lock (using legacy-peer-deps)
+package-lock.json
