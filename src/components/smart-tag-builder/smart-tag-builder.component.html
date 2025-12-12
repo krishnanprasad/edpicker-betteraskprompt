@@ -81,7 +81,6 @@
     }
   </div>
 
-  <!-- Step 3: Select Tags & Generate Prompt -->
   <!-- Step 3: Select Smart Tags & Generate Prompt -->
   @if (tagService.availableTags().length > 0) {
     <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mb-6">
@@ -96,6 +95,20 @@
           <span class="text-orange-600 font-semibold ml-2">• Maximum reached</span>
         }
       </p>
+
+      <!-- Conflict Warnings -->
+      @if (tagService.conflictWarnings().length > 0) {
+        <div class="mb-6 space-y-2">
+          @for (warning of tagService.conflictWarnings(); track warning) {
+            <div class="flex items-start gap-2 p-3 bg-orange-50 border-l-4 border-orange-500 text-orange-800 rounded-r-lg">
+              <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+              </svg>
+              <span class="text-sm font-medium">{{ warning }}</span>
+            </div>
+          }
+        </div>
+      }
 
       <div class="space-y-8">
         @for (category of ['role', 'context', 'output', 'tone', 'thinking']; track category) {
@@ -176,12 +189,64 @@
 
   <!-- Generated Prompt -->
   @if (tagService.finalPrompt()) {
+    <!-- Comparison Block for Default Prompt -->
+    @if (tagService.isDefaultPrompt()) {
+      <div class="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl shadow-lg border-2 border-yellow-300 p-6 mb-6">
+        <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <svg class="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+          </svg>
+          Want Better Results? See the Difference!
+        </h3>
+        <p class="text-sm text-gray-700 mb-4">
+          <strong>💡 Tip:</strong> Pick 2-3 tags above to create a smarter, more personalized prompt!
+        </p>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <!-- Left: Default Prompt -->
+          <div class="bg-white rounded-lg p-4 border-2 border-gray-300">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-2xl">🎓</span>
+              <h4 class="font-bold text-gray-700">Default Prompt</h4>
+            </div>
+            <p class="text-sm text-gray-600 leading-relaxed">{{ tagService.finalPrompt() }}</p>
+            <p class="text-xs text-gray-500 mt-2 italic">Generic, works for everyone</p>
+          </div>
+
+          <!-- Right: Smart Prompt Example -->
+          <div class="bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg p-4 border-2 border-purple-400">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-2xl">✨</span>
+              <h4 class="font-bold text-purple-700">Smart Prompt (with tags)</h4>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">
+              Act as a friendly tutor. Explain "{{ tagService.topic() }}" to a Class {{ tagService.detectedMeta()?.class || '10' }} student. 
+              Use simple language with real-world examples. Provide step-by-step explanation in bullet points. 
+              Keep it encouraging and easy to understand.
+            </p>
+            <p class="text-xs text-purple-700 mt-2 italic font-semibold">Personalized, clear, better results!</p>
+          </div>
+        </div>
+
+        <div class="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
+          <p class="text-sm text-blue-800">
+            <strong>🚀 Quick Action:</strong> Scroll up and select a few tags that match what you need, then click "Generate My Perfect Prompt" again!
+          </p>
+        </div>
+      </div>
+    }
+
+    <!-- Actual Generated Prompt -->
     <div class="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl shadow-lg border-2 border-purple-200 p-6">
       <h2 class="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        Your AI Prompt is Ready!
+        @if (tagService.isDefaultPrompt()) {
+          Your Default Prompt
+        } @else {
+          Your Smart Prompt is Ready!
+        }
       </h2>
       <div class="bg-white rounded-lg p-4 mb-4 border border-purple-200">
         <p class="text-gray-800 text-lg leading-relaxed whitespace-pre-wrap">{{ tagService.finalPrompt() }}</p>

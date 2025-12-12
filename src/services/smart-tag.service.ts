@@ -23,6 +23,8 @@ export class SmartTagService {
   private _finalPrompt = signal<string>('');
   private _isLoading = signal<boolean>(false);
   private _error = signal<string | null>(null);
+  private _isDefaultPrompt = signal<boolean>(false);
+  private _conflictWarnings = signal<string[]>([]);
   
   // Public readonly signals
   readonly intent = this._intent.asReadonly();
@@ -33,12 +35,13 @@ export class SmartTagService {
   readonly finalPrompt = this._finalPrompt.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
   readonly error = this._error.asReadonly();
+  readonly isDefaultPrompt = this._isDefaultPrompt.asReadonly();
+  readonly conflictWarnings = this._conflictWarnings.asReadonly();
   
   // Computed signals
   readonly canGeneratePrompt = computed(() => 
     this._intent() !== null && 
-    this._topic().length >= 4 && 
-    this._selectedTags().length > 0
+    this._topic().length >= 4
   );
   
   readonly selectedCount = computed(() => this._selectedTags().length);
@@ -190,6 +193,9 @@ export class SmartTagService {
       );
       this._availableTags.set(updated);
       this._selectedTags.set(selectedTags.filter(t => t.id !== tagId));
+      
+      // Re-detect conflicts after deselection
+      this.detectConflicts();
     } else {
       // Select (enforce max 5)
       if (selectedTags.length >= 5) {
@@ -203,7 +209,53 @@ export class SmartTagService {
       this._availableTags.set(updated);
       this._selectedTags.set([...selectedTags, { ...tag, selected: true }]);
       this._error.set(null);
+      
+      // Detect conflicts after selection
+      this.detectConflicts();
     }
+  }
+  
+  // Detect conflicts in selected tags
+  private detectConflicts(): void {
+    const selectedTags = this._selectedTags();
+    const warnings: string[] = [];
+    
+    const tagTexts = selectedTags.map(t => t.text.toLowerCase());
+    
+    // Define conflict rules
+    const conflictRules = [
+      {
+        keywords: ['short', 'brief', 'concise'],
+        conflictsWith: ['detailed', 'comprehensive', 'in-depth', 'thorough'],
+        message: 'These tags might conflict. We recommend choosing either short/brief OR detailed/comprehensive.'
+      },
+      {
+        keywords: ['simple', 'basic', 'easy'],
+        conflictsWith: ['advanced', 'complex', 'technical'],
+        message: 'These tags might conflict. We recommend choosing either simple/easy OR advanced/technical.'
+      },
+      {
+        keywords: ['formal', 'professional'],
+        conflictsWith: ['casual', 'friendly', 'conversational'],
+        message: 'These tags might conflict. We recommend choosing either formal/professional OR casual/friendly.'
+      }
+    ];
+    
+    // Check each rule
+    for (const rule of conflictRules) {
+      const hasKeyword = tagTexts.some(text => 
+        rule.keywords.some(kw => text.includes(kw))
+      );
+      const hasConflict = tagTexts.some(text => 
+        rule.conflictsWith.some(kw => text.includes(kw))
+      );
+      
+      if (hasKeyword && hasConflict) {
+        warnings.push(rule.message);
+      }
+    }
+    
+    this._conflictWarnings.set(warnings);
   }
   
   // Generate final prompt
@@ -212,13 +264,22 @@ export class SmartTagService {
     const intent = this._intent();
     const selectedTags = this._selectedTags();
     
-    if (!topic || !intent || selectedTags.length === 0) {
-      this._error.set('Please provide topic, intent, and select at least one tag');
+    if (!topic || !intent) {
+      this._error.set('Please provide topic and intent');
+      return;
+    }
+    
+    // If no tags selected, use default prompt
+    if (selectedTags.length === 0) {
+      const defaultPrompt = `Explain "${topic}" like a class teacher, using simple words with short key points that are easy to understand.`;
+      this._finalPrompt.set(defaultPrompt);
+      this._isDefaultPrompt.set(true);
       return;
     }
     
     this._isLoading.set(true);
     this._error.set(null);
+    this._isDefaultPrompt.set(false);
     
     try {
       const endpoint = `${environment.apiBase}/gemini/prompt/generate`;
@@ -258,6 +319,8 @@ export class SmartTagService {
     this._finalPrompt.set('');
     this._isLoading.set(false);
     this._error.set(null);
+    this._isDefaultPrompt.set(false);
+    this._conflictWarnings.set([]);
     
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);

@@ -1,23 +1,30 @@
-export type Intent = 'Learn' | 'Prepare for Test' | 'Revise' | 'Clear Doubt';
+export type Intent = 'learn' | 'test' | 'revise' | 'doubt';
 
-export type TagCategory = 'Role' | 'Context' | 'Output' | 'Tone' | 'Thinking';
+export type TagCategory = 'role' | 'context' | 'output' | 'tone' | 'thinking';
 
-export interface SmartTag {
+export interface SmartTagsResponse {
+  role: string[];
+  context: string[];
+  output: string[];
+  tone: string[];
+  thinking: string[];
+}
+
+export interface DetectedMeta {
+  class?: number;
+  board?: string;
+  subject?: string;
+}
+
+export interface TagItem {
+  id: string;
+  text: string;
   category: TagCategory;
-  value: string;
-  description?: string;
+  selected: boolean;
 }
 
-export interface SmartTagResponse {
-  tags: SmartTag[];
-}
-
-export interface SmartTagRequest {
-  intent: Intent;
+export interface PromptRequest {
   topic: string;
-}
-
-export interface GeneratedPrompt {
-  prompt: string;
-  selectedTags: SmartTag[];
+  selectedTags: string[];
+  intent: Intent;
 }
