@@ -19,6 +19,50 @@ export class SmartTagBuilderComponent {
     { value: 'doubt', label: 'Clear Doubt' }
   ];
 
+  // Category configurations with colors
+  categoryConfig: Record<TagCategory, { label: string; color: string; bgLight: string; bgSelected: string; border: string; borderSelected: string }> = {
+    role: {
+      label: 'ROLE',
+      color: 'text-orange-700',
+      bgLight: 'bg-orange-50',
+      bgSelected: 'bg-orange-100',
+      border: 'border-orange-300',
+      borderSelected: 'border-orange-600'
+    },
+    context: {
+      label: 'CONTEXT',
+      color: 'text-blue-700',
+      bgLight: 'bg-blue-50',
+      bgSelected: 'bg-blue-100',
+      border: 'border-blue-300',
+      borderSelected: 'border-blue-600'
+    },
+    output: {
+      label: 'OUTPUT',
+      color: 'text-green-700',
+      bgLight: 'bg-green-50',
+      bgSelected: 'bg-green-100',
+      border: 'border-green-300',
+      borderSelected: 'border-green-600'
+    },
+    tone: {
+      label: 'TONE',
+      color: 'text-yellow-700',
+      bgLight: 'bg-yellow-50',
+      bgSelected: 'bg-yellow-100',
+      border: 'border-yellow-400',
+      borderSelected: 'border-yellow-600'
+    },
+    thinking: {
+      label: 'THINKING',
+      color: 'text-purple-700',
+      bgLight: 'bg-purple-50',
+      bgSelected: 'bg-purple-100',
+      border: 'border-purple-300',
+      borderSelected: 'border-purple-600'
+    }
+  };
+
   constructor(public tagService: SmartTagService) {}
 
   // Intent selection
@@ -45,6 +89,18 @@ export class SmartTagBuilderComponent {
   // Get tags by category
   getTagsByCategory(category: TagCategory) {
     return this.tagService.availableTags().filter(t => t.category === category);
+  }
+
+  // Get category display config
+  getCategoryConfig(category: TagCategory) {
+    return this.categoryConfig[category];
+  }
+
+  // Refresh tags for a specific category (optional feature)
+  async refreshCategory(category: TagCategory) {
+    // This would call the backend to regenerate just this category
+    // For now, it reloads all tags
+    await this.tagService.loadSmartTags();
   }
 
   // Generate final prompt

@@ -1,1 +1,57 @@
 /* Smart Tag Builder specific styles */
+
+/* Tag Card Styles */
+.tag-card {
+  min-height: 80px;
+  cursor: pointer;
+  position: relative;
+}
+
+.tag-card:disabled {
+  cursor: not-allowed;
+}
+
+/* Line clamp for tag text (max 2 lines) */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hover effect for enabled cards */
+.tag-card:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Active/pressed state */
+.tag-card:not(:disabled):active {
+  transform: translateY(0);
+}
+
+/* Tooltip-like disabled state */
+.tag-card:disabled {
+  position: relative;
+}
+
+/* Custom scrollbar for the tag container if needed */
+.tag-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.tag-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.tag-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+.tag-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
