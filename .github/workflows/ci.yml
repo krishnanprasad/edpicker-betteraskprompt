@@ -1,0 +1,20 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Server smoke test
+        run: npm run server:start & PID=$!; sleep 10; kill $PID
+        env:
+          GEMINI_API_SECRET: ${{ secrets.GEMINI_API_SECRET }}
