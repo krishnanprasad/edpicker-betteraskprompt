@@ -1,7 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SmartTagService } from '../../services/smart-tag.service';
-import { Intent, SmartTag, TagCategory } from '../../models/smart-tag.model';
+import { Intent, TagCategory } from '../../models/smart-tag.model';
 
 @Component({
   selector: 'app-smart-tag-builder',
@@ -11,93 +11,72 @@ import { Intent, SmartTag, TagCategory } from '../../models/smart-tag.model';
   styleUrls: ['./smart-tag-builder.component.css']
 })
 export class SmartTagBuilderComponent {
-  intents: Intent[] = ['Learn', 'Prepare for Test', 'Revise', 'Clear Doubt'];
-  
-  selectedIntent = signal<Intent | null>(null);
-  topic = signal<string>('');
-  isLoading = signal<boolean>(false);
-  error = signal<string>('');
-  
-  availableTags = signal<SmartTag[]>([]);
-  selectedTags = signal<SmartTag[]>([]);
-  generatedPrompt = signal<string>('');
+  // Intent options with display labels
+  intentOptions: { value: Intent; label: string }[] = [
+    { value: 'learn', label: 'Learn' },
+    { value: 'test', label: 'Prepare for Test' },
+    { value: 'revise', label: 'Revise' },
+    { value: 'doubt', label: 'Clear Doubt' }
+  ];
 
-  constructor(private smartTagService: SmartTagService) {}
+  constructor(public tagService: SmartTagService) {}
 
+  // Intent selection
   selectIntent(intent: Intent) {
-    this.selectedIntent.set(intent);
+    this.tagService.setIntent(intent);
   }
 
-  setTopic(event: Event) {
+  // Topic input with auto-detection and debounced loading
+  onTopicInput(event: Event) {
     const target = event.target as HTMLTextAreaElement;
-    this.topic.set(target.value);
+    this.tagService.setTopic(target.value);
   }
 
-  async generateTags() {
-    if (!this.selectedIntent() || !this.topic().trim()) {
-      this.error.set('Please select an intent and enter a topic');
-      return;
-    }
-
-    this.isLoading.set(true);
-    this.error.set('');
-    
-    try {
-      const response = await this.smartTagService.generateSmartTags({
-        intent: this.selectedIntent()!,
-        topic: this.topic()
-      });
-      
-      this.availableTags.set(response.tags);
-      this.selectedTags.set([]);
-      this.generatedPrompt.set('');
-    } catch (err: any) {
-      this.error.set(err.message || 'Failed to generate smart tags');
-    } finally {
-      this.isLoading.set(false);
-    }
+  // Tag selection toggle
+  toggleTag(tagId: string) {
+    this.tagService.toggleTagSelection(tagId);
   }
 
-  toggleTag(tag: SmartTag) {
-    const current = this.selectedTags();
-    const index = current.findIndex(t => t.category === tag.category && t.value === tag.value);
-    
-    if (index > -1) {
-      // Remove tag
-      this.selectedTags.set(current.filter((_, i) => i !== index));
-    } else {
-      // Add tag (max 5)
-      if (current.length < 5) {
-        this.selectedTags.set([...current, tag]);
+  // Check if tag is selected
+  isTagSelected(tagId: string): boolean {
+    return this.tagService.selectedTags().some(t => t.id === tagId);
+  }
+
+  // Get tags by category
+  getTagsByCategory(category: TagCategory) {
+    return this.tagService.availableTags().filter(t => t.category === category);
+  }
+
+  // Generate final prompt
+  async generateFinalPrompt() {
+    await this.tagService.generatePrompt();
+  }
+
+  // Copy prompt to clipboard
+  async copyPrompt() {
+    const prompt = this.tagService.finalPrompt();
+    if (prompt) {
+      try {
+        await navigator.clipboard.writeText(prompt);
+        alert('Prompt copied to clipboard!');
+      } catch (err) {
+        console.error('Failed to copy:', err);
       }
     }
-    
-    this.updateGeneratedPrompt();
   }
 
-  isTagSelected(tag: SmartTag): boolean {
-    return this.selectedTags().some(t => t.category === tag.category && t.value === tag.value);
-  }
-
-  getTagsByCategory(category: TagCategory): SmartTag[] {
-    return this.availableTags().filter(t => t.category === category);
-  }
-
-  updateGeneratedPrompt() {
-    const tags = this.selectedTags();
-    if (tags.length === 0) {
-      this.generatedPrompt.set('');
-      return;
+  // Share on WhatsApp
+  shareOnWhatsApp() {
+    const prompt = this.tagService.finalPrompt();
+    if (prompt) {
+      const encodedPrompt = encodeURIComponent(prompt);
+      window.open(`https://wa.me/?text=${encodedPrompt}`, '_blank');
     }
+  }
 
-    const parts: string[] = [];
-    const topic = this.topic();
-    
-    tags.forEach(tag => {
-      parts.push(tag.value);
-    });
-    
-    const prompt = `${parts.join(' ')} Topic: ${topic}`;
+  // Reset all
+  reset() {
+    this.tagService.reset();
     this.generatedPrompt.set(prompt);
   }
 
