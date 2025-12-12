@@ -166,16 +166,16 @@
 
       <div class="space-y-8">
         @for (category of ['role', 'context', 'output', 'tone', 'thinking']; track category) {
-          @if (getTagsByCategory(category as any).length > 0) {
+          @if (getTagsByCategory($any(category)).length > 0) {
             <div>
               <!-- Category Header -->
               <div class="flex items-center justify-between mb-3">
-                <h3 class="font-bold {{ getCategoryConfig(category as any).color }} text-base uppercase tracking-wide flex items-center gap-2">
-                  <span class="w-1 h-6 rounded {{ getCategoryConfig(category as any).bgSelected }}"></span>
-                  {{ getCategoryConfig(category as any).label }}
+                <h3 class="font-bold {{ getCategoryConfig($any(category)).color }} text-base uppercase tracking-wide flex items-center gap-2">
+                  <span class="w-1 h-6 rounded {{ getCategoryConfig($any(category)).bgSelected }}"></span>
+                  {{ getCategoryConfig($any(category)).label }}
                 </h3>
                 <button
-                  (click)="refreshCategory(category as any)"
+                  (click)="refreshCategory($any(category))"
                   [disabled]="tagService.isLoading()"
                   class="text-gray-500 hover:text-gray-700 transition-colors duration-200 disabled:opacity-40"
                   title="Regenerate suggestions for this category">

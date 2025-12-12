@@ -3,11 +3,22 @@ export type Intent = 'learn' | 'test' | 'revise' | 'doubt';
 export type TagCategory = 'role' | 'context' | 'output' | 'tone' | 'thinking';
 
 export interface SmartTagsResponse {
+  success?: boolean;
   role: string[];
   context: string[];
   output: string[];
   tone: string[];
   thinking: string[];
+  tags?: {
+    role: string[];
+    context: string[];
+    output: string[];
+    tone: string[];
+    thinking: string[];
+  };
+  metadata?: DetectedMeta;
+  fallback?: boolean;
+  message?: string;
 }
 
 export interface DetectedMeta {
