@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "ng serve --port 4202",
+    "dev": "ng serve --port 4201",
     "dev:all": "concurrently \"npm run dev\" \"npm run start-backend\" --names ANGULAR,EXPRESS",
     "start-backend": "npm --prefix ../betteraskprompt-backend run dev",
     "build": "ng build",
