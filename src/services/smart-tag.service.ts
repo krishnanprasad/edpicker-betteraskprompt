@@ -277,36 +277,32 @@ export class SmartTagService {
       return;
     }
     
-    this._isLoading.set(true);
-    this._error.set(null);
+    // Build prompt from selected tags (client-side)
     this._isDefaultPrompt.set(false);
     
-    try {
-      const endpoint = `${environment.apiBase}/gemini/prompt/generate`;
-      const request: PromptRequest = {
-        topic,
-        intent,
-        selectedTags: selectedTags.map(t => ({ text: t.text, category: t.category }))
-      };
-      
-      const response$ = this.http.post<{ success: boolean; prompt?: string; message?: string }>(
-        endpoint, 
-        request
-      );
-      
-      const response = await firstValueFrom(response$);
-      
-      if (response.success && response.prompt) {
-        this._finalPrompt.set(response.prompt);
-      } else {
-        this._error.set(response.message || 'Failed to generate prompt');
-      }
-    } catch (error: any) {
-      this._error.set(error.message || 'Failed to generate prompt');
-      console.error('Error generating prompt:', error);
-    } finally {
-      this._isLoading.set(false);
-    }
+    // Find ROLE tag or use default
+    const roleTag = selectedTags.find(t => t.category === 'role');
+    const roleInstruction = roleTag 
+      ? `Act as: ${roleTag.text}` 
+      : 'Act as a friendly school teacher.';
+    
+    // Build requirements list from all selected tags
+    const requirements: string[] = [];
+    selectedTags.forEach((tag, index) => {
+      requirements.push(`${index + 1}. ${tag.text}`);
+    });
+    
+    // Assemble final prompt
+    const finalPrompt = `${roleInstruction}
+
+Topic: "${topic}"
+
+Requirements:
+${requirements.join('\n')}
+
+Please provide a clear, student-friendly explanation.`;
+
+    this._finalPrompt.set(finalPrompt);
   }
   
   // Reset all state

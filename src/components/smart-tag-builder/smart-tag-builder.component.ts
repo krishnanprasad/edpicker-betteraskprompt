@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SmartTagService } from '../../services/smart-tag.service';
 import { Intent, TagCategory } from '../../models/smart-tag.model';
@@ -63,6 +63,9 @@ export class SmartTagBuilderComponent {
     }
   };
 
+  // Copy state management
+  copySuccess = signal<boolean>(false);
+
   constructor(public tagService: SmartTagService) {}
 
   // Intent selection
@@ -108,49 +111,48 @@ export class SmartTagBuilderComponent {
     await this.tagService.generatePrompt();
   }
 
-  // Copy prompt to clipboard
+  // Copy prompt to clipboard with success animation
   async copyPrompt() {
     const prompt = this.tagService.finalPrompt();
     if (prompt) {
       try {
         await navigator.clipboard.writeText(prompt);
-        alert('Prompt copied to clipboard!');
+        this.copySuccess.set(true);
+        
+        // Reset after 3 seconds
+        setTimeout(() => {
+          this.copySuccess.set(false);
+        }, 3000);
       } catch (err) {
         console.error('Failed to copy:', err);
+        alert('Failed to copy to clipboard');
       }
     }
   }
 
-  // Share on WhatsApp
+  // Share on WhatsApp with formatted message
   shareOnWhatsApp() {
     const prompt = this.tagService.finalPrompt();
-    if (prompt) {
-      const encodedPrompt = encodeURIComponent(prompt);
-      window.open(`https://wa.me/?text=${encodedPrompt}`, '_blank');
+    const topic = this.tagService.topic();
+    const productUrl = 'https://krishnanprasad.github.io/edpicker-betteraskprompt/';
+    
+    if (prompt && topic) {
+      const formattedMessage = `📚 Study Prompt I just made:
+"Explain ${topic}"
+
+🤖 AI Prompt:
+${prompt}
+
+✨ Make your own → ${productUrl}`;
+      
+      const encodedMessage = encodeURIComponent(formattedMessage);
+      window.open(`https://api.whatsapp.com/send?text=${encodedMessage}`, '_blank');
     }
   }
 
   // Reset all
   reset() {
     this.tagService.reset();
-    this.generatedPrompt.set(prompt);
-  }
-
-  copyPrompt() {
-    navigator.clipboard.writeText(this.generatedPrompt());
-  }
-
-  shareToWhatsApp() {
-    const text = encodeURIComponent(this.generatedPrompt());
-    window.open(`https://wa.me/?text=${text}`, '_blank');
-  }
-
-  reset() {
-    this.selectedIntent.set(null);
-    this.topic.set('');
-    this.availableTags.set([]);
-    this.selectedTags.set([]);
-    this.generatedPrompt.set('');
-    this.error.set('');
+    this.copySuccess.set(false);
   }
 }
