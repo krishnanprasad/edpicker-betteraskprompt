@@ -1,11 +1,62 @@
 <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-6xl">
+  <!-- Onboarding Overlay -->
+  <app-onboarding-overlay></app-onboarding-overlay>
+
   <header class="text-center mb-8">
     <h1 class="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-blue-600">
       Smart Tag Prompt Builder
     </h1>
     <p class="mt-3 text-lg text-gray-600">Build perfect AI prompts in 3 easy steps</p>
     <p class="mt-1 text-sm text-gray-500">For Students (Class 6-12) & Teachers</p>
+    
+    <!-- Show Me How Button -->
+    @if (tagService.isOnboardingComplete()) {
+      <button
+        (click)="showTutorial()"
+        class="mt-3 text-sm text-purple-600 hover:text-purple-700 font-medium underline"
+        aria-label="Show tutorial">
+        Show Me How
+      </button>
+    }
   </header>
+
+  <!-- Preset Banner -->
+  @if (showPresetBanner()) {
+    <div class="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-300 rounded-xl p-4 mb-6 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="text-3xl">💡</div>
+        <div>
+          <div class="font-bold text-gray-900">Welcome back!</div>
+          <div class="text-sm text-gray-600">Use your last setup to get started quickly?</div>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button
+          (click)="useLastSetup()"
+          class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-all">
+          Yes, Use It
+        </button>
+        <button
+          (click)="dismissPresetBanner()"
+          class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-all">
+          Start Fresh
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Offline Warning -->
+  @if (tagService.isOffline()) {
+    <div class="bg-red-50 border-2 border-red-300 rounded-xl p-4 mb-6 flex items-center gap-3">
+      <svg class="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+      </svg>
+      <div>
+        <div class="font-bold text-red-800">No internet 📡</div>
+        <div class="text-sm text-red-600">Check your connection and try again. You can still use basic features.</div>
+      </div>
+    </div>
+  }
 
   <!-- Step 1: Choose Intent -->
   <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mb-6">
@@ -20,7 +71,9 @@
           [class]="tagService.intent() === option.value 
             ? 'bg-green-500 text-white border-green-600 shadow-lg transform scale-105' 
             : 'bg-white text-gray-700 border-gray-300 hover:border-green-400 hover:shadow-md'"
-          class="px-4 py-3 rounded-lg border-2 font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+          class="px-4 py-3 rounded-lg border-2 font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+          [attr.aria-label]="'Select intent: ' + option.label"
+          [attr.aria-pressed]="tagService.intent() === option.value">
           {{ option.label }}
         </button>
       }
@@ -38,7 +91,8 @@
       (input)="onTopicInput($event)"
       rows="3"
       class="w-full p-4 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-gray-800 placeholder-gray-500"
-      placeholder="Type your topic (e.g., Photosynthesis, Fractions, Mughal Empire)"></textarea>
+      placeholder="Type your topic (e.g., Photosynthesis, Fractions, Mughal Empire)"
+      aria-label="Enter your topic or question"></textarea>
     
     <!-- Auto-Detection Badge -->
     @if (tagService.detectedMeta()) {
@@ -138,7 +192,9 @@
                     (click)="toggleTag(tag.id)"
                     [disabled]="!isTagSelected(tag.id) && !tagService.canSelectMore()"
                     [title]="!isTagSelected(tag.id) && !tagService.canSelectMore() ? 'Max 5 selected to keep prompt clear' : ''"
-                    class="tag-card group relative text-left p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0
+                    [attr.aria-label]="(isTagSelected(tag.id) ? 'Deselect' : 'Select') + ' tag: ' + tag.text"
+                    [attr.aria-pressed]="isTagSelected(tag.id)"
+                    class="tag-card group relative text-left p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2
                       {{ isTagSelected(tag.id) 
                         ? getCategoryConfig(category as any).bgSelected + ' ' + getCategoryConfig(category as any).borderSelected 
                         : getCategoryConfig(category as any).bgLight + ' ' + getCategoryConfig(category as any).border + ' hover:' + getCategoryConfig(category as any).borderSelected }}">
@@ -286,6 +342,36 @@
           </svg>
           Start Over
         </button>
+      </div>
+    </div>
+  }
+
+  <!-- Recent Prompts -->
+  @if (tagService.recentPrompts().length > 0) {
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mt-6">
+      <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        Recent Prompts (This Session)
+      </h3>
+      <div class="space-y-3">
+        @for (recent of tagService.recentPrompts(); track recent.timestamp) {
+          <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-purple-300 transition-all">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1">
+                <div class="font-semibold text-gray-800 mb-1">{{ recent.topic }}</div>
+                <div class="text-sm text-gray-600 line-clamp-2">{{ recent.prompt }}</div>
+              </div>
+              <button
+                (click)="useRecentPrompt(recent)"
+                class="flex-shrink-0 px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold rounded-lg transition-all text-sm"
+                aria-label="Use this prompt again">
+                Use Again
+              </button>
+            </div>
+          </div>
+        }
       </div>
     </div>
   }

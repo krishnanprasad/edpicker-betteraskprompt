@@ -2,11 +2,12 @@ import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SmartTagService } from '../../services/smart-tag.service';
 import { Intent, TagCategory } from '../../models/smart-tag.model';
+import { OnboardingOverlayComponent } from '../onboarding-overlay/onboarding-overlay.component';
 
 @Component({
   selector: 'app-smart-tag-builder',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, OnboardingOverlayComponent],
   templateUrl: './smart-tag-builder.component.html',
   styleUrls: ['./smart-tag-builder.component.css']
 })
@@ -65,8 +66,36 @@ export class SmartTagBuilderComponent {
 
   // Copy state management
   copySuccess = signal<boolean>(false);
+  showPresetBanner = signal<boolean>(false);
 
-  constructor(public tagService: SmartTagService) {}
+  constructor(public tagService: SmartTagService) {
+    // Check if user has a saved preset
+    if (tagService.hasPreset() && !tagService.isOnboardingComplete()) {
+      setTimeout(() => {
+        this.showPresetBanner.set(true);
+      }, 1000);
+    }
+  }
+  
+  // Load last preset
+  useLastSetup() {
+    this.tagService.loadLastPreset();
+    this.showPresetBanner.set(false);
+  }
+  
+  dismissPresetBanner() {
+    this.showPresetBanner.set(false);
+  }
+  
+  // Use recent prompt
+  useRecentPrompt(recent: { topic: string; prompt: string; timestamp: number }) {
+    this.tagService.useRecentPrompt(recent);
+  }
+  
+  // Show onboarding tutorial
+  showTutorial() {
+    this.tagService.showOnboardingTutorial();
+  }
 
   // Intent selection
   selectIntent(intent: Intent) {

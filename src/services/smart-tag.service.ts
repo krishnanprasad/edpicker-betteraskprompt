@@ -25,6 +25,10 @@ export class SmartTagService {
   private _error = signal<string | null>(null);
   private _isDefaultPrompt = signal<boolean>(false);
   private _conflictWarnings = signal<string[]>([]);
+  private _isOnboardingComplete = signal<boolean>(false);
+  private _showOnboarding = signal<boolean>(false);
+  private _isOffline = signal<boolean>(false);
+  private _recentPrompts = signal<Array<{ topic: string; prompt: string; timestamp: number }>>([]);
   
   // Public readonly signals
   readonly intent = this._intent.asReadonly();
@@ -37,6 +41,10 @@ export class SmartTagService {
   readonly error = this._error.asReadonly();
   readonly isDefaultPrompt = this._isDefaultPrompt.asReadonly();
   readonly conflictWarnings = this._conflictWarnings.asReadonly();
+  readonly isOnboardingComplete = this._isOnboardingComplete.asReadonly();
+  readonly showOnboarding = this._showOnboarding.asReadonly();
+  readonly isOffline = this._isOffline.asReadonly();
+  readonly recentPrompts = this._recentPrompts.asReadonly();
   
   // Computed signals
   readonly canGeneratePrompt = computed(() => 
@@ -50,7 +58,24 @@ export class SmartTagService {
   // Debounce timer
   private debounceTimer: any = null;
   
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    // Check onboarding status
+    const hasSeenOnboarding = localStorage.getItem('betterask_onboarding_complete');
+    this._isOnboardingComplete.set(hasSeenOnboarding === 'true');
+    
+    if (!hasSeenOnboarding) {
+      // Show onboarding for first-time users
+      this._showOnboarding.set(true);
+    }
+    
+    // Load recent prompts from sessionStorage
+    this.loadRecentPrompts();
+    
+    // Check online status
+    this.checkOnlineStatus();
+    window.addEventListener('online', () => this._isOffline.set(false));
+    window.addEventListener('offline', () => this._isOffline.set(true));
+  }
   
   // Set intent
   setIntent(intent: Intent): void {
@@ -128,6 +153,12 @@ export class SmartTagService {
       return;
     }
     
+    // Check if offline
+    if (this._isOffline()) {
+      this._error.set('No internet 📡. Check your connection and try again.');
+      return;
+    }
+    
     this._isLoading.set(true);
     this._error.set(null);
     
@@ -165,15 +196,40 @@ export class SmartTagService {
         if (response.metadata) {
           this._detectedMeta.set(response.metadata);
         }
+        
+        // If using fallback, show info message
+        if (response.fallback) {
+          this._error.set('Using fallback suggestions. API temporarily unavailable.');
+        }
       } else {
         this._error.set(response.message || 'Failed to generate tags');
+        // Use fallback tags
+        this.useFallbackTags();
       }
     } catch (error: any) {
-      this._error.set(error.message || 'Failed to load smart tags');
       console.error('Error loading smart tags:', error);
+      
+      // Use fallback tags on error
+      this.useFallbackTags();
+      this._error.set('API error. Using fallback suggestions.');
     } finally {
       this._isLoading.set(false);
     }
+  }
+  
+  // Fallback tags for offline/error scenarios
+  private useFallbackTags(): void {
+    const fallbackTags: TagItem[] = [
+      { id: 'tag-1', text: 'Act as a patient teacher explaining to a student', category: 'role', selected: false },
+      { id: 'tag-2', text: 'Act as a friendly study partner', category: 'role', selected: false },
+      { id: 'tag-3', text: 'Use simple and clear language', category: 'output', selected: false },
+      { id: 'tag-4', text: 'Provide step-by-step explanations', category: 'output', selected: false },
+      { id: 'tag-5', text: 'Use real-world examples students can relate to', category: 'thinking', selected: false },
+      { id: 'tag-6', text: 'Be friendly and encouraging', category: 'tone', selected: false },
+      { id: 'tag-7', text: 'Keep it clear and easy to understand', category: 'tone', selected: false }
+    ];
+    
+    this._availableTags.set(fallbackTags);
   }
   
   // Toggle tag selection (max 5)
@@ -303,6 +359,17 @@ ${requirements.join('\n')}
 Please provide a clear, student-friendly explanation.`;
 
     this._finalPrompt.set(finalPrompt);
+    
+    // Save to recent prompts
+    this.saveRecentPrompt(topic, finalPrompt);
+    
+    // Save as preset after generating a few prompts
+    const promptCount = parseInt(localStorage.getItem('betterask_prompt_count') || '0');
+    localStorage.setItem('betterask_prompt_count', (promptCount + 1).toString());
+    
+    if (promptCount >= 2) {
+      this.saveAsPreset();
+    }
   }
   
   // Reset all state
@@ -321,5 +388,89 @@ Please provide a clear, student-friendly explanation.`;
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
     }
+  }
+  
+  // Onboarding management
+  completeOnboarding(): void {
+    localStorage.setItem('betterask_onboarding_complete', 'true');
+    this._isOnboardingComplete.set(true);
+    this._showOnboarding.set(false);
+  }
+  
+  showOnboardingTutorial(): void {
+    this._showOnboarding.set(true);
+  }
+  
+  closeOnboarding(): void {
+    this._showOnboarding.set(false);
+  }
+  
+  // Check online status
+  private checkOnlineStatus(): void {
+    this._isOffline.set(!navigator.onLine);
+  }
+  
+  // Preset management
+  saveAsPreset(): void {
+    const intent = this._intent();
+    const selectedTags = this._selectedTags();
+    
+    if (intent && selectedTags.length > 0) {
+      const preset = {
+        intent,
+        tagIds: selectedTags.map(t => t.id),
+        tags: selectedTags.map(t => ({ text: t.text, category: t.category }))
+      };
+      localStorage.setItem('betterask_last_preset', JSON.stringify(preset));
+    }
+  }
+  
+  loadLastPreset(): boolean {
+    const presetData = localStorage.getItem('betterask_last_preset');
+    if (!presetData) return false;
+    
+    try {
+      const preset = JSON.parse(presetData);
+      this._intent.set(preset.intent);
+      
+      // We can't restore exact tag IDs, but we can suggest similar setup
+      // This is a hint for the user to reselect similar tags
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  
+  hasPreset(): boolean {
+    return !!localStorage.getItem('betterask_last_preset');
+  }
+  
+  // Recent prompts management
+  private loadRecentPrompts(): void {
+    const recentsData = sessionStorage.getItem('betterask_recent_prompts');
+    if (recentsData) {
+      try {
+        const recents = JSON.parse(recentsData);
+        this._recentPrompts.set(recents);
+      } catch {
+        this._recentPrompts.set([]);
+      }
+    }
+  }
+  
+  private saveRecentPrompt(topic: string, prompt: string): void {
+    const recents = this._recentPrompts();
+    const newRecent = { topic, prompt, timestamp: Date.now() };
+    
+    // Add to front, keep only last 3
+    const updated = [newRecent, ...recents].slice(0, 3);
+    this._recentPrompts.set(updated);
+    sessionStorage.setItem('betterask_recent_prompts', JSON.stringify(updated));
+  }
+  
+  useRecentPrompt(recent: { topic: string; prompt: string; timestamp: number }): void {
+    this._topic.set(recent.topic);
+    this._finalPrompt.set(recent.prompt);
+    // Note: We can't restore the exact tags that were used
   }
 }

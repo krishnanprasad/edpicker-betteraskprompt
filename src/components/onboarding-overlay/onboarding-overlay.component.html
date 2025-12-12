@@ -1,0 +1,81 @@
+@if (tagService.showOnboarding()) {
+  <div class="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center p-4 animate-fade-in" (click)="skip()">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 animate-slide-up" (click)="$event.stopPropagation()">
+      <!-- Progress Indicator -->
+      <div class="flex justify-center gap-2 mb-6">
+        @for (step of steps; track $index) {
+          <div 
+            [class]="currentStep() === $index ? 'bg-purple-600' : currentStep() > $index ? 'bg-green-500' : 'bg-gray-300'"
+            class="h-2 flex-1 rounded-full transition-all duration-300">
+          </div>
+        }
+      </div>
+
+      <!-- Step Content -->
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+          {{ currentStep() + 1 }}
+        </div>
+        <h2 class="text-3xl font-bold text-gray-900 mb-3">{{ steps[currentStep()].title }}</h2>
+        <p class="text-lg text-gray-600 leading-relaxed">{{ steps[currentStep()].description }}</p>
+      </div>
+
+      <!-- Visual Hint -->
+      <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 mb-8 border-2 border-purple-200">
+        @if (currentStep() === 0) {
+          <div class="flex items-center gap-4">
+            <div class="text-4xl">🎯</div>
+            <div class="flex-1">
+              <div class="font-semibold text-gray-800 mb-1">Example:</div>
+              <div class="text-sm text-gray-600">Click "Learn" → Type "Photosynthesis in plants"</div>
+            </div>
+          </div>
+        } @else if (currentStep() === 1) {
+          <div class="flex items-center gap-4">
+            <div class="text-4xl">🏷️</div>
+            <div class="flex-1">
+              <div class="font-semibold text-gray-800 mb-1">Example:</div>
+              <div class="text-sm text-gray-600">Pick tags like "Use simple language" + "Provide examples"</div>
+            </div>
+          </div>
+        } @else {
+          <div class="flex items-center gap-4">
+            <div class="text-4xl">✨</div>
+            <div class="flex-1">
+              <div class="font-semibold text-gray-800 mb-1">Ready to go!</div>
+              <div class="text-sm text-gray-600">Your custom prompt will be perfect for ChatGPT or any AI tool</div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Navigation Buttons -->
+      <div class="flex items-center justify-between gap-4">
+        <button
+          (click)="skip()"
+          class="px-6 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors">
+          Skip Tutorial
+        </button>
+        
+        <div class="flex gap-3">
+          @if (currentStep() > 0) {
+            <button
+              (click)="previousStep()"
+              class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-all duration-200">
+              Back
+            </button>
+          }
+          <button
+            (click)="nextStep()"
+            class="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-lg transition-all duration-200 shadow-lg">
+            @if (currentStep() === steps.length - 1) {
+              Get Started!
+            } @else {
+              Next
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
