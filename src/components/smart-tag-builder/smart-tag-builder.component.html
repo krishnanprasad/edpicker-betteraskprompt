@@ -187,7 +187,7 @@
 
               <!-- Tag Cards -->
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                @for (tag of getTagsByCategory(category as any); track tag.id) {
+                @for (tag of getTagsByCategory($any(category)); track tag.id) {
                   <button
                     (click)="toggleTag(tag.id)"
                     [disabled]="!isTagSelected(tag.id) && !tagService.canSelectMore()"
@@ -196,18 +196,18 @@
                     [attr.aria-pressed]="isTagSelected(tag.id)"
                     class="tag-card group relative text-left p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2
                       {{ isTagSelected(tag.id) 
-                        ? getCategoryConfig(category as any).bgSelected + ' ' + getCategoryConfig(category as any).borderSelected 
-                        : getCategoryConfig(category as any).bgLight + ' ' + getCategoryConfig(category as any).border + ' hover:' + getCategoryConfig(category as any).borderSelected }}">
+                        ? getCategoryConfig($any(category)).bgSelected + ' ' + getCategoryConfig($any(category)).borderSelected 
+                        : getCategoryConfig($any(category)).bgLight + ' ' + getCategoryConfig($any(category)).border + ' hover:' + getCategoryConfig($any(category)).borderSelected }}">
                     
                     <!-- Top Row: Category Label + Icon -->
                     <div class="flex items-start justify-between mb-2">
-                      <span class="text-xs font-bold uppercase tracking-wide {{ getCategoryConfig(category as any).color }} opacity-70">
-                        {{ getCategoryConfig(category as any).label }}
+                      <span class="text-xs font-bold uppercase tracking-wide {{ getCategoryConfig($any(category)).color }} opacity-70">
+                        {{ getCategoryConfig($any(category)).label }}
                       </span>
                       <span class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold
                         {{ isTagSelected(tag.id) 
-                          ? getCategoryConfig(category as any).color + ' ' + getCategoryConfig(category as any).bgSelected 
-                          : 'bg-white border-2 ' + getCategoryConfig(category as any).border }}">
+                          ? getCategoryConfig($any(category)).color + ' ' + getCategoryConfig($any(category)).bgSelected 
+                          : 'bg-white border-2 ' + getCategoryConfig($any(category)).border }}">
                         @if (isTagSelected(tag.id)) {
                           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
@@ -219,7 +219,7 @@
                     </div>
 
                     <!-- Tag Text (max 2 lines) -->
-                    <p class="text-sm {{ getCategoryConfig(category as any).color }} leading-snug line-clamp-2 font-medium">
+                    <p class="text-sm {{ getCategoryConfig($any(category)).color }} leading-snug line-clamp-2 font-medium">
                       {{ tag.text }}
                     </p>
                   </button>
