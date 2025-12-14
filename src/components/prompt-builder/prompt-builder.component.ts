@@ -58,10 +58,9 @@ export class PromptBuilderComponent {
 
   // Form fields
   topic = signal('');
-  role = signal('');
-  task = signal('');
-  context = signal('');
-  format = signal('');
+
+  // Debounced signals for preview generation
+  debouncedTopic = signal('');
   
   // Smart Tags State
   availableSmartTags = signal<string[]>([]);
@@ -71,11 +70,10 @@ export class PromptBuilderComponent {
   // Validation state
   topicError = signal<string | null>(null);
   isShaking = signal(false);
-  isGenerating = signal(false);
   isCopied = signal(false);
   
-  // Debounce subject
-  private topicSubject = new Subject<string>();
+  // Debounce subjects
+  topicSubject = new Subject<string>();
 
   currentIntents = computed(() => PERSONA_INTENTS[this.activePersona()]);
 
@@ -98,25 +96,29 @@ export class PromptBuilderComponent {
   });
 
   assembledPrompt = computed(() => {
+    const currentTopic = this.debouncedTopic();
+    if (!currentTopic || currentTopic.length < 4) return '';
+
     const parts = [];
     
-    // Header Section
-    parts.push(`Persona: ${this.activePersona()}`);
-    parts.push(`Intent: ${this.activeIntent()}`);
-    if (this.topic()) parts.push(`Topic: ${this.topic()}`);
+    // 1. Core Context
+    parts.push(`User Persona: ${this.activePersona()}`);
+    parts.push(`User Intent: ${this.activeIntent()}`);
+    parts.push(`Topic: ${currentTopic}`);
 
-    if (this.role()) parts.push(this.role());
-    
-    if (this.context()) parts.push(this.context());
-    
-    if (this.task()) parts.push(this.task());
-    
-    // Add selected smart tags to the prompt
-    if (this.selectedSmartTags().length > 0) {
-      parts.push(`Key Requirements: ${this.selectedSmartTags().join(', ')}`);
+    // 2. Requirements (Selected Tags or Safe Defaults)
+    const tags = this.selectedSmartTags();
+    if (tags.length > 0) {
+      // Deduplicate tags just in case
+      const uniqueTags = [...new Set(tags)];
+      parts.push(`Key Requirements:\n- ${uniqueTags.join('\n- ')}`);
+    } else {
+      // Safe Defaults (Deterministic)
+      parts.push(`Key Requirements:\n- Explain the concept clearly and simply.\n- Ensure the content is appropriate for a ${this.activePersona()}.`);
     }
 
-    if (this.format()) parts.push(this.format());
+    // 3. Clear Output Instruction
+    parts.push(`Output Instruction: Please generate a response that directly addresses the topic and intent, strictly adhering to the requirements above.`);
     
     return parts.join('\n\n');
   });
@@ -130,6 +132,7 @@ export class PromptBuilderComponent {
       debounceTime(500),
       distinctUntilChanged()
     ).subscribe(value => {
+      this.debouncedTopic.set(value);
       if (value.length >= 4) {
         this.loadSmartTags();
       } else {
@@ -143,10 +146,8 @@ export class PromptBuilderComponent {
       try {
         const data = JSON.parse(saved);
         this.topic.set(data.topic || '');
-        this.role.set(data.role || '');
-        this.task.set(data.task || '');
-        this.context.set(data.context || '');
-        this.format.set(data.format || '');
+        this.debouncedTopic.set(data.topic || '');
+
         this.selectedSmartTags.set(data.selectedSmartTags || []);
         
         if (data.activePersona) {
@@ -175,10 +176,6 @@ export class PromptBuilderComponent {
     effect(() => {
       const data = {
         topic: this.topic(),
-        role: this.role(),
-        task: this.task(),
-        context: this.context(),
-        format: this.format(),
         activePersona: this.activePersona(),
         activeIntent: this.activeIntent(),
         selectedSmartTags: this.selectedSmartTags()
@@ -262,38 +259,20 @@ export class PromptBuilderComponent {
     // and let the UI reveal them.
   }
 
-  validateAndGenerate() {
+  private saveToHistory() {
     const currentTopic = this.topic();
-    
-    if (!currentTopic || currentTopic.length < 4) {
-      this.topicError.set('⚠️ Please enter at least 4 characters');
-      this.isShaking.set(true);
-      setTimeout(() => this.isShaking.set(false), 500); // Reset shake animation
-      return;
-    }
-    
-    // Proceed with generation
-    this.isGenerating.set(true);
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      console.log('Generating prompt for:', currentTopic);
-      this.isGenerating.set(false);
-      
-      // Save to session storage (Recent Prompts)
-      const recent = JSON.parse(sessionStorage.getItem('recent-prompts') || '[]');
-      recent.unshift({
-        topic: currentTopic,
-        intent: this.activeIntent(),
-        persona: this.activePersona(),
-        prompt: this.assembledPrompt(),
-        date: new Date().toISOString()
-      });
-      // Keep last 10
-      if (recent.length > 10) recent.pop();
-      sessionStorage.setItem('recent-prompts', JSON.stringify(recent));
-      
-    }, 2000);
+    // Save to session storage (Recent Prompts)
+    const recent = JSON.parse(sessionStorage.getItem('recent-prompts') || '[]');
+    recent.unshift({
+      topic: currentTopic || 'Untitled',
+      intent: this.activeIntent(),
+      persona: this.activePersona(),
+      prompt: this.assembledPrompt(),
+      date: new Date().toISOString()
+    });
+    // Keep last 10
+    if (recent.length > 10) recent.pop();
+    sessionStorage.setItem('recent-prompts', JSON.stringify(recent));
   }
 
   setPersona(persona: Persona) {
@@ -304,9 +283,6 @@ export class PromptBuilderComponent {
     this.activeIntent.set(PERSONA_INTENTS[persona][0]);
     
     // Clear fields except topic/context to reset generated output and selections
-    this.role.set('');
-    this.task.set('');
-    this.format.set('');
     this.selectedSmartTags.set([]);
     this.revealStage.set(0);
     
@@ -332,6 +308,7 @@ export class PromptBuilderComponent {
     if (!this.assembledPrompt()) return;
     navigator.clipboard.writeText(this.assembledPrompt());
     
+    this.saveToHistory();
     this.isCopied.set(true);
     setTimeout(() => this.isCopied.set(false), 2000);
   }
@@ -339,6 +316,7 @@ export class PromptBuilderComponent {
   shareToWhatsApp() {
     if (!this.assembledPrompt()) return;
     
+    this.saveToHistory();
     const text = `*Topic:* ${this.topic()}
 *Intent:* ${this.activeIntent()}
 
@@ -353,10 +331,6 @@ Built with BetterAskPrompt: ${window.location.origin}`;
 
   clear() {
     if (confirm('Are you sure you want to clear all fields?')) {
-      this.role.set('');
-      this.task.set('');
-      this.context.set('');
-      this.format.set('');
       this.selectedSmartTags.set([]);
       this.revealStage.set(0);
     }
