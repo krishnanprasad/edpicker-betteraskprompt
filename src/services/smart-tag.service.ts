@@ -81,6 +81,11 @@ export class SmartTagService {
   setIntent(intent: Intent): void {
     this._intent.set(intent);
     this._error.set(null);
+
+    // If topic is already valid, trigger tag loading immediately
+    if (this._topic().length >= 4) {
+      this.loadSmartTags();
+    }
   }
   
   // Set topic with auto-detection and debounced tag loading
@@ -155,7 +160,8 @@ export class SmartTagService {
     
     // Check if offline
     if (this._isOffline()) {
-      this._error.set('No internet 📡. Check your connection and try again.');
+      this._error.set('No internet 📡. Using offline suggestions.');
+      this.useFallbackTags();
       return;
     }
     
@@ -163,7 +169,7 @@ export class SmartTagService {
     this._error.set(null);
     
     try {
-      const endpoint = `${environment.apiBase}/gemini/tags/generate`;
+      const endpoint = `${environment.apiBase}/tags/generate`; // Updated endpoint to match backend
       const response$ = this.http.post<SmartTagsResponse>(endpoint, {
         topic,
         intent,
@@ -177,16 +183,54 @@ export class SmartTagService {
         const tags: TagItem[] = [];
         let idCounter = 1;
         
-        (['role', 'context', 'output', 'tone', 'thinking'] as const).forEach(category => {
-          const categoryTags = response.tags[category] || [];
-          categoryTags.forEach((text: string) => {
+        // Map backend categories to frontend categories
+        // Backend: role, task, context, format, constraints
+        // Frontend: role, context, output, tone, thinking
+        
+        const categoryMap: Record<string, string> = {
+          'role': 'role',
+          'context': 'context',
+          'format': 'output',
+          'constraints': 'tone', // Mapping constraints to tone for now
+          'task': 'thinking'     // Mapping task to thinking for now
+        };
+
+        Object.keys(response.tags).forEach(backendCat => {
+           const frontendCat = categoryMap[backendCat] || backendCat;
+           // Only process if it's a valid frontend category
+           if (['role', 'context', 'output', 'tone', 'thinking'].includes(frontendCat)) {
+             const categoryTags = response.tags[backendCat] || [];
+             categoryTags.forEach((text: string) => {
+               tags.push({
+                 id: `tag-${idCounter++}`,
+                 text,
+                 category: frontendCat as any,
+                 selected: false
+               });
+             });
+           }
+        });
+
+        // Ensure at least one tag exists for each category
+        const requiredCategories = ['role', 'context', 'output', 'tone', 'thinking'];
+        const safeDefaults: Record<string, string> = {
+          'role': 'Act as an expert teacher',
+          'context': 'For a student learning this topic',
+          'output': 'Use clear bullet points',
+          'tone': 'Keep it simple and encouraging',
+          'thinking': 'Explain the key concepts'
+        };
+
+        requiredCategories.forEach(cat => {
+          const hasCategory = tags.some(t => t.category === cat);
+          if (!hasCategory) {
             tags.push({
-              id: `tag-${idCounter++}`,
-              text,
-              category,
+              id: `tag-default-${cat}-${idCounter++}`,
+              text: safeDefaults[cat],
+              category: cat as any,
               selected: false
             });
-          });
+          }
         });
         
         this._availableTags.set(tags);
@@ -220,13 +264,26 @@ export class SmartTagService {
   // Fallback tags for offline/error scenarios
   private useFallbackTags(): void {
     const fallbackTags: TagItem[] = [
+      // Role
       { id: 'tag-1', text: 'Act as a patient teacher explaining to a student', category: 'role', selected: false },
       { id: 'tag-2', text: 'Act as a friendly study partner', category: 'role', selected: false },
-      { id: 'tag-3', text: 'Use simple and clear language', category: 'output', selected: false },
-      { id: 'tag-4', text: 'Provide step-by-step explanations', category: 'output', selected: false },
-      { id: 'tag-5', text: 'Use real-world examples students can relate to', category: 'thinking', selected: false },
-      { id: 'tag-6', text: 'Be friendly and encouraging', category: 'tone', selected: false },
-      { id: 'tag-7', text: 'Keep it clear and easy to understand', category: 'tone', selected: false }
+      { id: 'tag-3', text: 'Act as an expert tutor in this subject', category: 'role', selected: false },
+      
+      // Context
+      { id: 'tag-4', text: 'Student in class 10 studying this topic', category: 'context', selected: false },
+      { id: 'tag-5', text: 'Preparing for understanding and exams', category: 'context', selected: false },
+      
+      // Output (Format)
+      { id: 'tag-6', text: 'Use simple bullet points', category: 'output', selected: false },
+      { id: 'tag-7', text: 'Provide step-by-step examples', category: 'output', selected: false },
+      
+      // Tone (Constraints)
+      { id: 'tag-8', text: 'Keep explanations short and clear', category: 'tone', selected: false },
+      { id: 'tag-9', text: 'Avoid complex jargon', category: 'tone', selected: false },
+      
+      // Thinking (Task)
+      { id: 'tag-10', text: 'Explain the core concepts simply', category: 'thinking', selected: false },
+      { id: 'tag-11', text: 'Create a practice quiz with answers', category: 'thinking', selected: false }
     ];
     
     this._availableTags.set(fallbackTags);
