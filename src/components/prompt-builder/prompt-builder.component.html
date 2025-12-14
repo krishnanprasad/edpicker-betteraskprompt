@@ -112,8 +112,6 @@
                   [class.border-gray-200]="!selectedSmartTags().includes(tag)"
                   [class.border]="!selectedSmartTags().includes(tag)"
                   [class.text-gray-600]="!selectedSmartTags().includes(tag)"
-                  [class.hover:border-indigo-300]="!selectedSmartTags().includes(tag)"
-                  [class.hover:bg-gray-50]="!selectedSmartTags().includes(tag)"
 
                   class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 animate-fade-in-down flex items-center gap-2 group"
                   [style.animation-delay]="i * 100 + 'ms'"
@@ -151,8 +149,6 @@
                       [class.border-gray-200]="!selectedSmartTags().includes(tag)"
                       [class.border]="!selectedSmartTags().includes(tag)"
                       [class.text-gray-600]="!selectedSmartTags().includes(tag)"
-                      [class.hover:border-indigo-300]="!selectedSmartTags().includes(tag)"
-                      [class.hover:bg-gray-50]="!selectedSmartTags().includes(tag)"
 
                       class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 animate-fade-in-down flex items-center gap-2 group"
                       [style.animation-delay]="(i - 3) * 100 + 'ms'"
@@ -262,7 +258,7 @@
             Preview
           </h2>
           <div class="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
-            {{ assembledPrompt().length }} chars
+            {{ assembledPrompt()?.length || 0 }} chars
           </div>
         </div>
         
