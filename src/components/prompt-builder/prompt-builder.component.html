@@ -112,14 +112,14 @@
                   [class.border-gray-200]="!selectedSmartTags().includes(tag)"
                   [class.border]="!selectedSmartTags().includes(tag)"
                   [class.text-gray-600]="!selectedSmartTags().includes(tag)"
-
+                  
                   class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 animate-fade-in-down flex items-center gap-2 group"
                   [style.animation-delay]="i * 100 + 'ms'"
                 >
                   <span>{{ tag }}</span>
                   @if (selectedSmartTags().includes(tag)) {
                     <span class="bg-indigo-200 text-indigo-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">✓</span>
-                  } else {
+                  } @else {
                     <span class="text-gray-400 group-hover:text-indigo-500 transition-colors">+</span>
                   }
                 </button>
@@ -149,14 +149,14 @@
                       [class.border-gray-200]="!selectedSmartTags().includes(tag)"
                       [class.border]="!selectedSmartTags().includes(tag)"
                       [class.text-gray-600]="!selectedSmartTags().includes(tag)"
-
+                      
                       class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 animate-fade-in-down flex items-center gap-2 group"
                       [style.animation-delay]="(i - 3) * 100 + 'ms'"
                     >
                       <span>{{ tag }}</span>
                       @if (selectedSmartTags().includes(tag)) {
                         <span class="bg-indigo-200 text-indigo-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">✓</span>
-                      } else {
+                      } @else {
                         <span class="text-gray-400 group-hover:text-indigo-500 transition-colors">+</span>
                       }
                     </button>
