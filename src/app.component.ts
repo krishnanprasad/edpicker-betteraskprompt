@@ -2,12 +2,15 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { PromptAnalyzerComponent } from './components/prompt-analyzer/prompt-analyzer.component';
 import { SmartTagBuilderComponent } from './components/smart-tag-builder/smart-tag-builder.component';
+import { PromptBuilderComponent } from './components/prompt-builder/prompt-builder.component';
+import { OnboardingOverlayComponent } from './components/onboarding-overlay/onboarding-overlay.component';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-root',
   template: `
     <main class="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 text-gray-800 antialiased">
+      <app-onboarding-overlay></app-onboarding-overlay>
       <!-- Navigation -->
       <nav class="bg-white shadow-md border-b border-gray-200">
         <div class="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -25,6 +28,12 @@ import { CommonModule } from '@angular/common';
               Prompt Analyzer
             </button>
             <button
+              (click)="activeTab.set('prompt-builder')"
+              [class]="activeTab() === 'prompt-builder' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'"
+              class="px-4 py-2 rounded-lg font-semibold transition-all duration-200 border-2 border-indigo-200">
+              Prompt Builder
+            </button>
+            <button
               (click)="activeTab.set('builder')"
               [class]="activeTab() === 'builder' ? 'bg-green-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'"
               class="px-4 py-2 rounded-lg font-semibold transition-all duration-200 border-2 border-green-200">
@@ -37,15 +46,17 @@ import { CommonModule } from '@angular/common';
       <!-- Content -->
       @if (activeTab() === 'analyzer') {
         <app-prompt-analyzer></app-prompt-analyzer>
+      } @else if (activeTab() === 'prompt-builder') {
+        <app-prompt-builder></app-prompt-builder>
       } @else {
         <app-smart-tag-builder></app-smart-tag-builder>
       }
     </main>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, PromptAnalyzerComponent, SmartTagBuilderComponent]
+  imports: [CommonModule, PromptAnalyzerComponent, SmartTagBuilderComponent, PromptBuilderComponent, OnboardingOverlayComponent]
 })
 export class AppComponent {
-  activeTab = signal<'analyzer' | 'builder'>('builder');
+  activeTab = signal<'analyzer' | 'builder' | 'prompt-builder'>('prompt-builder');
 }
 
