@@ -420,12 +420,15 @@ Please provide a clear, student-friendly explanation.`;
     this.saveRecentPrompt(topic, finalPrompt);
     
     // Save as preset after generating a few prompts
+    // Disabled persistence
+    /*
     const promptCount = parseInt(localStorage.getItem('betterask_prompt_count') || '0');
     localStorage.setItem('betterask_prompt_count', (promptCount + 1).toString());
     
     if (promptCount >= 2) {
       this.saveAsPreset();
     }
+    */
   }
   
   // Reset all state
@@ -468,6 +471,8 @@ Please provide a clear, student-friendly explanation.`;
   
   // Preset management
   saveAsPreset(): void {
+    // Disabled persistence as per requirement
+    /*
     const intent = this._intent();
     const selectedTags = this._selectedTags();
     
@@ -479,9 +484,13 @@ Please provide a clear, student-friendly explanation.`;
       };
       localStorage.setItem('betterask_last_preset', JSON.stringify(preset));
     }
+    */
   }
   
   loadLastPreset(): boolean {
+    // Disabled persistence as per requirement
+    return false;
+    /*
     const presetData = localStorage.getItem('betterask_last_preset');
     if (!presetData) return false;
     
@@ -495,14 +504,18 @@ Please provide a clear, student-friendly explanation.`;
     } catch {
       return false;
     }
+    */
   }
   
   hasPreset(): boolean {
-    return !!localStorage.getItem('betterask_last_preset');
+    return false; // localStorage.getItem('betterask_last_preset');
   }
   
   // Recent prompts management
   private loadRecentPrompts(): void {
+    // Disabled persistence as per requirement
+    this._recentPrompts.set([]);
+    /*
     const recentsData = sessionStorage.getItem('betterask_recent_prompts');
     if (recentsData) {
       try {
@@ -512,6 +525,7 @@ Please provide a clear, student-friendly explanation.`;
         this._recentPrompts.set([]);
       }
     }
+    */
   }
   
   private saveRecentPrompt(topic: string, prompt: string): void {
@@ -521,7 +535,7 @@ Please provide a clear, student-friendly explanation.`;
     // Add to front, keep only last 3
     const updated = [newRecent, ...recents].slice(0, 3);
     this._recentPrompts.set(updated);
-    sessionStorage.setItem('betterask_recent_prompts', JSON.stringify(updated));
+    // sessionStorage.setItem('betterask_recent_prompts', JSON.stringify(updated));
   }
 
   clearSession(): void {

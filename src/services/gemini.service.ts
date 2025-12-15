@@ -39,6 +39,7 @@ export class GeminiService {
     persona: string;
     stage: number;
     selectedTags?: string[];
+    visibleTags?: string[];
     avoidDuplicates?: boolean;
   }): Promise<ServiceTagResponse> {
     const endpoint = `${environment.apiBase}/tags/generate`;

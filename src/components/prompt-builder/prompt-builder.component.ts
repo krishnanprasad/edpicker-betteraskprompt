@@ -19,6 +19,30 @@ const CONFLICT_PAIRS = [
   ['Step By Step Guide', 'Brief Topic Summary']
 ];
 
+const FALLBACK_TAGS: Record<Persona, SmartTag[]> = {
+  'Teacher': [
+    { text: 'Include Real Life Example', category: 'Add Context' },
+    { text: 'Explain Step By Step', category: 'Reasoning Help' },
+    { text: 'Use Simple Analogy', category: 'Reasoning Help' },
+    { text: 'Create Practice Questions', category: 'Task Instruction' },
+    { text: 'Highlight Key Terms', category: 'Format Constraints' }
+  ],
+  'Parents': [
+    { text: 'Explain Like I\'m 5', category: 'Persona Style' },
+    { text: 'Give Fun Activity', category: 'Task Instruction' },
+    { text: 'Use Daily Objects', category: 'Add Context' },
+    { text: 'Keep It Short', category: 'Format Constraints' },
+    { text: 'Encourage Curiosity', category: 'Persona Style' }
+  ],
+  'Students': [
+    { text: 'Give Exam Tips', category: 'Task Instruction' },
+    { text: 'Summarize Key Points', category: 'Format Constraints' },
+    { text: 'Explain The Logic', category: 'Reasoning Help' },
+    { text: 'Compare With Similar', category: 'Reasoning Help' },
+    { text: 'Use Bullet Points', category: 'Format Constraints' }
+  ]
+};
+
 @Component({
   selector: 'app-prompt-builder',
   standalone: true,
@@ -28,6 +52,7 @@ const CONFLICT_PAIRS = [
 })
 export class PromptBuilderComponent {
   activePersona = signal<Persona>('Teacher');
+  classLevel = signal<number>(8); // Default Class 8
   activeIntent = signal<string>('');
   bannerMessage = signal<string | null>(null);
 
@@ -82,6 +107,7 @@ export class PromptBuilderComponent {
     
     // 1. Core Context
     parts.push(`User Persona: ${this.activePersona()}`);
+    parts.push(`Grade/Class Level: ${this.classLevel()}`);
     parts.push(`User Intent: ${this.activeIntent()}`);
     parts.push(`Topic: ${currentTopic}`);
 
@@ -121,17 +147,20 @@ export class PromptBuilderComponent {
 
     // Load recent prompts
     this.loadRecentPrompts();
+  }
 
-    // Auto-save effect
-    effect(() => {
-      const data = {
-        topic: this.topic(),
-        activePersona: this.activePersona(),
-        activeIntent: this.activeIntent(),
-        selectedSmartTags: this.selectedSmartTags()
-      };
-      localStorage.setItem('prompt-builder-draft', JSON.stringify(data));
-    });
+  onClassLevelChange(event: Event) {
+    const value = parseInt((event.target as HTMLInputElement).value, 10);
+    this.classLevel.set(value);
+    
+    // Clear state on class change
+    this.selectedSmartTags.set([]);
+    this.revealStage.set(0);
+    
+    // Reload tags if topic is present
+    if (this.topic().length >= 4) {
+      this.loadSmartTags();
+    }
   }
 
   onTopicChange(value: string) {
@@ -164,9 +193,16 @@ export class PromptBuilderComponent {
       avoidDuplicates: true
     });
 
-    if (aiResponse.success && !aiResponse.fallback && aiResponse.tags.length > 0) {
-      this.availableSmartTags.set(aiResponse.tags);
+    if (aiResponse.success && aiResponse.tags.length > 0) {
+      const normalizedTags = this.normalizeTags(aiResponse.tags);
+      this.availableSmartTags.set(normalizedTags);
       
+      if (aiResponse.fallback) {
+        const msg = aiResponse.message || 'Using fallback suggestions.';
+        this.bannerMessage.set(`⚠️ ${msg}`);
+        setTimeout(() => this.bannerMessage.set(null), 5000);
+      }
+
       if (resetSelection) {
         this.selectedSmartTags.set([]);
         this.revealStage.set(1); // Show first 3
@@ -175,16 +211,30 @@ export class PromptBuilderComponent {
         this.revealStage.set(this.selectedSmartTags().length > 0 ? 2 : 1);
       }
     } else {
-      // Fallback or Failure: Show error banner and keep UI empty
-      this.availableSmartTags.set([]);
-      this.revealStage.set(0);
+      // Fallback: Use fixed list
+      this.availableSmartTags.set(FALLBACK_TAGS[persona]);
+      this.revealStage.set(1);
       
-      const msg = aiResponse.message || 'Unable to generate suggestions. Please try again.';
+      const msg = aiResponse.message || 'Using offline suggestions.';
       this.bannerMessage.set(`⚠️ ${msg}`);
       setTimeout(() => this.bannerMessage.set(null), 5000);
     }
 
     this.isLoadingTags.set(false);
+  }
+
+  normalizeTags(tags: SmartTag[]): SmartTag[] {
+    return tags.map(tag => ({
+      ...tag,
+      text: this.toTitleCase(tag.text.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ''))
+    }));
+  }
+
+  toTitleCase(str: string): string {
+    return str.replace(
+      /\w\S*/g,
+      text => text.charAt(0).toUpperCase() + text.substring(1).toLowerCase()
+    );
   }
 
   refreshSmartTags() {
@@ -203,18 +253,21 @@ export class PromptBuilderComponent {
       
       // Progressive reveal: if user selects a tag and we are in stage 1, move to stage 2
       if (this.revealStage() === 1) {
-        this.getNext2Tags(); // Fetch next best tags
+        this.fetchStage2Tags(); // Fetch next best tags
         this.revealStage.set(2);
       }
     }
   }
 
-  async getNext2Tags() {
+  async fetchStage2Tags() {
     const persona = this.activePersona();
     const intent = this.activeIntent();
     const topic = this.topic();
     
     this.isLoadingTags.set(true);
+
+    // Get currently visible tags to avoid duplicates
+    const currentVisible = this.availableSmartTags().map(t => t.text);
 
     const aiResponse = await this.geminiService.generateSmartTags({
       topic,
@@ -222,13 +275,14 @@ export class PromptBuilderComponent {
       persona,
       stage: 2,
       selectedTags: this.selectedSmartTags(),
+      visibleTags: currentVisible,
       avoidDuplicates: true
     });
 
-    if (aiResponse.success && !aiResponse.fallback && aiResponse.tags.length > 0) {
+    if (aiResponse.success && aiResponse.tags.length > 0) {
        // Append, dedupe, cap to 8
        const current = this.availableSmartTags();
-       const newTags = aiResponse.tags.filter(t => !current.some(c => c.text === t.text));
+       const newTags = this.normalizeTags(aiResponse.tags).filter(t => !current.some(c => c.text === t.text));
        const combined = [...current, ...newTags].slice(0, 8);
        this.availableSmartTags.set(combined);
     }
@@ -237,12 +291,16 @@ export class PromptBuilderComponent {
   }
 
   loadRecentPrompts() {
+    // Disabled persistence
+    this.recentPrompts.set([]);
+    /*
     try {
       const recent = JSON.parse(sessionStorage.getItem('recent-prompts') || '[]');
       this.recentPrompts.set(recent);
     } catch (e) {
       this.recentPrompts.set([]);
     }
+    */
   }
 
   useRecentPrompt(recent: any) {
@@ -264,25 +322,33 @@ export class PromptBuilderComponent {
   }
 
   clearSession() {
-    sessionStorage.removeItem('recent-prompts');
+    // sessionStorage.removeItem('recent-prompts');
     this.recentPrompts.set([]);
   }
 
   private saveToHistory() {
     const currentTopic = this.topic();
     // Save to session storage (Recent Prompts)
-    const recent = JSON.parse(sessionStorage.getItem('recent-prompts') || '[]');
-    recent.unshift({
+    // const recent = JSON.parse(sessionStorage.getItem('recent-prompts') || '[]');
+    const recent = this.recentPrompts();
+    
+    // Create new entry
+    const newEntry = {
       topic: currentTopic || 'Untitled',
       intent: this.activeIntent(),
       persona: this.activePersona(),
       prompt: this.assembledPrompt(),
       date: new Date().toISOString()
-    });
+    };
+    
+    // Add to front
+    const updated = [newEntry, ...recent];
+    
     // Keep last 10
-    if (recent.length > 10) recent.pop();
-    sessionStorage.setItem('recent-prompts', JSON.stringify(recent));
-    this.recentPrompts.set(recent);
+    if (updated.length > 10) updated.pop();
+    
+    // sessionStorage.setItem('recent-prompts', JSON.stringify(recent));
+    this.recentPrompts.set(updated);
   }
 
   setPersona(persona: Persona) {
@@ -308,6 +374,11 @@ export class PromptBuilderComponent {
 
   setIntent(intent: string) {
     this.activeIntent.set(intent);
+    
+    // Clear selected tags on intent change
+    this.selectedSmartTags.set([]);
+    this.revealStage.set(0);
+
     // Reload tags for new intent
     if (this.topic().length >= 4) {
       this.loadSmartTags();
@@ -337,6 +408,23 @@ Built with BetterAskPrompt: ${window.location.origin}`;
 
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
+  }
+
+  hardReset() {
+    if (confirm('This will reset all app data (except onboarding). Are you sure?')) {
+      // localStorage.removeItem('prompt-builder-draft');
+      // sessionStorage.removeItem('recent-prompts');
+      // localStorage.removeItem('betterask_last_preset');
+      // localStorage.removeItem('betterask_prompt_count');
+      
+      // Reset local state
+      this.topic.set('');
+      this.selectedSmartTags.set([]);
+      this.revealStage.set(0);
+      this.recentPrompts.set([]);
+      
+      window.location.reload();
+    }
   }
 
   clear() {
