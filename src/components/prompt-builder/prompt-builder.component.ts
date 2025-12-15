@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { GeminiService } from '../../services/gemini.service';
 
 type Persona = 'Teacher' | 'Parents' | 'Students';
 
@@ -13,34 +14,31 @@ const PERSONA_INTENTS: Record<Persona, string[]> = {
 };
 
 const CONFLICT_PAIRS = [
-  ['Summary', 'Deep Dive'],
-  ['Simple Explanation', 'Deep Dive'],
-  ['EL5', 'Deep Dive'],
-  ['Step-by-step', 'Summary'],
-  ['Short & Concise', 'Detailed & Comprehensive']
+  ['Brief Topic Summary', 'Deep Dive Explanation'],
+  ['Step By Step Guide', 'Brief Topic Summary']
 ];
 
 const SMART_TAGS_DATA: Record<Persona, Record<string, string[]>> = {
   'Teacher': {
-    'Generate Questions': ['Multiple Choice', 'Critical Thinking', 'Real-world Application', 'Bloom\'s Taxonomy', 'Answer Key'],
-    'Create Explanation': ['Step-by-step', 'Visual Aids', 'Real-life Examples', 'Common Misconceptions', 'Interactive Elements'],
-    'Simplify Weak': ['Core Concepts', 'Visual Analogies', 'Practice Problems', 'Confidence Building', 'Step-by-step Guide'],
-    'Use Analogy': ['Everyday Life', 'Sports', 'Cooking', 'Nature', 'Technology'],
-    'Latest Research': ['Key Findings', 'Methodology', 'Implications', 'Summary', 'Citations']
+    'Generate Questions': ['Multiple Choice Questions', 'Critical Thinking Tasks', 'Real World Application', 'Blooms Taxonomy Levels', 'Include Answer Key', 'Mixed Difficulty Levels', 'Full Topic Coverage', 'Set Time Limit'],
+    'Create Explanation': ['Step By Step Guide', 'Include Visual Aids', 'Real Life Examples', 'Common Student Mistakes', 'Interactive Class Elements', 'Use Simple Analogy', 'Check For Understanding', 'Brief Topic Summary'],
+    'Simplify Weak': ['Focus Core Concepts', 'Use Visual Analogies', 'Easy Practice Problems', 'Build Student Confidence', 'Step By Step Guide', 'Memory Aid Mnemonic', 'Simple Visual Aid', 'Real World Link'],
+    'Use Analogy': ['Everyday Life Analogy', 'Sports Related Analogy', 'Cooking Baking Analogy', 'Nature Based Analogy', 'Modern Tech Analogy', 'Historical Event Analogy', 'Pop Culture Reference', 'Car Vehicle Analogy'],
+    'Latest Research': ['Key Research Findings', 'Research Methodology Details', 'Practical Classroom Implications', 'Brief Research Summary', 'Include Academic Citations', 'Relevant Data Statistics', 'Subject Expert Quotes', 'Future Research Trends']
   },
   'Parents': {
-    'Help Homework': ['Step-by-step', 'Don\'t Solve Directly', 'Guiding Questions', 'Encouragement', 'Check Understanding'],
-    'Help Project': ['Brainstorming', 'Materials List', 'Timeline', 'Creative Ideas', 'Safety Tips'],
-    'Explain Simply': ['EL5', 'Real-world Examples', 'No Jargon', 'Visuals', 'Fun Facts'],
-    'Find Resources': ['Videos', 'Articles', 'Games', 'Books', 'Worksheets'],
-    'Play & Learn': ['Educational Games', 'Outdoor Activities', 'DIY Crafts', 'Science Experiments', 'Storytelling']
+    'Help Homework': ['Step By Step Guide', 'Dont Solve Directly', 'Ask Guiding Questions', 'Offer Encouragement Words', 'Check Child Understanding', 'Show Patience Tips', 'Positive Reinforcement', 'Break Down Task'],
+    'Help Project': ['Brainstorming Session Ideas', 'Required Materials List', 'Project Timeline Plan', 'Creative Project Ideas', 'Safety Precautions Tips', 'Budget Friendly Options', 'Use Recycled Materials', 'Define Parent Role'],
+    'Explain Simply': ['Explain Like Five', 'Real World Examples', 'No Complex Jargon', 'Use Visual Aids', 'Include Fun Facts', 'Simple Drawing Ideas', 'Tell Short Story', 'Learning Game Idea'],
+    'Find Resources': ['Educational Video Links', 'Readable Article Links', 'Learning Game Links', 'Book Recommendations List', 'Printable Worksheet Links', 'Learning App Links', 'Museum Visit Ideas', 'Documentary Video Links'],
+    'Play & Learn': ['Educational Game Ideas', 'Outdoor Activity Ideas', 'DIY Craft Project', 'Home Science Experiment', 'Interactive Storytelling Time', 'Music And Songs', 'Physical Movement Activity', 'Role Play Scenario']
   },
   'Students': {
-    'Homework Help': ['Explain Concept', 'Hint', 'Similar Example', 'Step-by-step', 'Check Answer'],
-    'Project Ideas': ['Creative', 'Feasible', 'Unique', 'Science Fair', 'Artistic'],
-    'Learn Concept': ['Deep Dive', 'Summary', 'Key Points', 'Quiz Me', 'Examples'],
-    'Exam Prep': ['Practice Questions', 'Flashcards', 'Summary Sheet', 'Time Management', 'Key Formulas'],
-    'Clear Doubt': ['Simple Explanation', 'Analogy', 'Example', 'Diagram Description', 'Why/How']
+    'Homework Help': ['Explain Core Concept', 'Give Helpful Hint', 'Show Similar Example', 'Step By Step Guide', 'Check My Answer', 'Show Relevant Formula', 'Define Key Terms', 'Highlight Key Concept'],
+    'Project Ideas': ['Creative Project Ideas', 'Feasible For Student', 'Unique Project Angle', 'Science Fair Project', 'Artistic Project Ideas', 'Low Cost Materials', 'Quick To Complete', 'Group Project Ideas'],
+    'Learn Concept': ['Deep Dive Explanation', 'Brief Topic Summary', 'Key Learning Points', 'Quiz Me Now', 'Real World Examples', 'Historical Timeline View', 'Compare And Contrast', 'Cause And Effect'],
+    'Exam Prep': ['Practice Exam Questions', 'Flashcard Study Points', 'One Page Summary', 'Time Management Tips', 'List Key Formulas', 'Past Paper Questions', 'Mock Test Simulation', 'Create Study Plan'],
+    'Clear Doubt': ['Simple Clear Explanation', 'Use Simple Analogy', 'Show Concrete Example', 'Describe Visual Diagram', 'Explain Why How', 'Step By Step Guide', 'Visual Representation Idea', 'Link Related Topic']
   }
 };
 
@@ -65,7 +63,8 @@ export class PromptBuilderComponent {
   // Smart Tags State
   availableSmartTags = signal<string[]>([]);
   selectedSmartTags = signal<string[]>([]);
-  revealStage = signal<0 | 1 | 2>(0); // 0: Hidden, 1: First 3, 2: All 5
+  revealStage = signal<0 | 1 | 2>(0); // 0: Hidden, 1: First 3, 2: All 8
+  isLoadingTags = signal(false);
   
   // Validation state
   topicError = signal<string | null>(null);
@@ -126,7 +125,7 @@ export class PromptBuilderComponent {
     return parts.join('\n\n');
   });
 
-  constructor() {
+  constructor(private geminiService: GeminiService) {
     // Initialize default intent
     this.activeIntent.set(PERSONA_INTENTS['Teacher'][0]);
 
@@ -169,23 +168,39 @@ export class PromptBuilderComponent {
     this.topicSubject.next(value);
   }
 
-  loadSmartTags(resetSelection = true) {
+  async loadSmartTags(resetSelection = true) {
     const persona = this.activePersona();
     const intent = this.activeIntent();
+    const topic = this.topic();
     
-    // Simulate network check / fallback logic
-    // In a real app, this would try an API first, then fall back.
-    // Since we are using static data for V1.1/V1.2, this IS the fallback/offline-ready data.
-    // Clone to ensure signal update triggers even if same data
-    const tags = [...(SMART_TAGS_DATA[persona]?.[intent] || [])];
+    if (topic.length < 4) return;
+
+    this.isLoadingTags.set(true);
     
-    // Check if we are "offline" (simulated check or real navigator.onLine)
-    if (!navigator.onLine) {
-       this.bannerMessage.set('⚠️ Offline: Showing basic suggestions');
-       setTimeout(() => this.bannerMessage.set(null), 3000);
+    // Try AI first
+    const aiResponse = await this.geminiService.generateSmartTags({
+      topic,
+      intent,
+      persona,
+      stage: 1
+    });
+
+    if (aiResponse.success && aiResponse.tags.length > 0) {
+      // Filter for short tags (3-4 words)
+      const shortTags = aiResponse.tags.filter(t => t.split(' ').length <= 4);
+      this.availableSmartTags.set(shortTags);
+    } else {
+      // Fallback to static data
+      const tags = [...(SMART_TAGS_DATA[persona]?.[intent] || [])];
+      this.availableSmartTags.set(tags);
+      
+      if (!navigator.onLine) {
+         this.bannerMessage.set('⚠️ Offline: Showing basic suggestions');
+         setTimeout(() => this.bannerMessage.set(null), 3000);
+      }
     }
 
-    this.availableSmartTags.set(tags);
+    this.isLoadingTags.set(false);
     
     if (resetSelection) {
       this.selectedSmartTags.set([]);
@@ -194,6 +209,10 @@ export class PromptBuilderComponent {
       // If restoring, ensure we show enough tags
       this.revealStage.set(this.selectedSmartTags().length > 0 ? 2 : 1);
     }
+  }
+
+  refreshSmartTags() {
+    this.loadSmartTags(true);
   }
 
   toggleSmartTag(tag: string) {
@@ -214,24 +233,31 @@ export class PromptBuilderComponent {
     }
   }
 
-  getNext2Tags() {
-    // In a real backend scenario, this would call an API with:
-    // { selectedTags: this.selectedSmartTags(), visibleTags: this.availableSmartTags().slice(0,3), ... }
+  async getNext2Tags() {
+    const persona = this.activePersona();
+    const intent = this.activeIntent();
+    const topic = this.topic();
     
-    // For V1.2 Static/Fallback Logic:
-    // We already have all 5 tags loaded in availableSmartTags.
-    // The UI simply reveals index 3 and 4.
-    // To make this "context-aware" in a static context, we could re-sort the remaining tags
-    // based on the first selection, but since our static data is already curated sets,
-    // the simplest robust implementation is to ensure we don't duplicate and just reveal.
+    this.isLoadingTags.set(true);
+
+    const aiResponse = await this.geminiService.generateSmartTags({
+      topic,
+      intent,
+      persona,
+      stage: 2,
+      selectedTags: this.selectedSmartTags(),
+      avoidDuplicates: true
+    });
+
+    if (aiResponse.success && aiResponse.tags.length > 0) {
+       const shortTags = aiResponse.tags.filter(t => t.split(' ').length <= 4);
+       // Append, dedupe, cap to 8
+       const current = this.availableSmartTags();
+       const combined = [...new Set([...current, ...shortTags])].slice(0, 8);
+       this.availableSmartTags.set(combined);
+    }
     
-    // If we were fetching dynamically, we would append to availableSmartTags here.
-    // Example:
-    // const nextTags = fetchMoreTags(...);
-    // this.availableSmartTags.update(tags => [...tags, ...nextTags]);
-    
-    // Since we pre-load 5, we just ensure no duplicates exist (already handled by Set/Static data structure)
-    // and let the UI reveal them.
+    this.isLoadingTags.set(false);
   }
 
   loadRecentPrompts() {

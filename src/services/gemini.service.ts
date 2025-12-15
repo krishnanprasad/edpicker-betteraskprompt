@@ -19,6 +19,25 @@ export interface TagResponse {
 export class GeminiService {
   constructor(private http: HttpClient) {}
 
+  async generateSmartTags(params: {
+    topic: string;
+    intent: string;
+    persona: string;
+    stage: number;
+    selectedTags?: string[];
+    avoidDuplicates?: boolean;
+  }): Promise<TagResponse> {
+    const endpoint = `${environment.apiBase}/gemini/tags`;
+    try {
+      const resp$ = this.http.post<{ tags: string[] }>(endpoint, params);
+      const result = await firstValueFrom(resp$);
+      return { success: true, tags: result.tags };
+    } catch (error) {
+      console.error('Failed to generate tags:', error);
+      return { success: false, tags: [] };
+    }
+  }
+
   async analyzeStudentPrompt(studentPrompt: string): Promise<PromptAnalysis> {
     const isDev = isDevMode();
     const endpoint = `${environment.apiBase}/gemini/analyze`;
@@ -151,41 +170,5 @@ export class GeminiService {
     }
   }
 
-  /**
-   * Generates smart tags based on topic and intent.
-   * Used by Prompt Builder.
-   */
-  async generateSmartTags(payload: {
-    topic: string;
-    intent: string;
-    persona: string;
-    stage: number;
-    selectedTags?: string[];
-    avoidDuplicates?: boolean;
-  }): Promise<TagResponse> {
-    const isDev = isDevMode();
-    const endpoint = `${environment.apiBase}/tags/generate`;
 
-    if (isDev) {
-      console.log('\n🚀 [FRONTEND] Requesting Smart Tags');
-      console.log('   Topic:', payload.topic);
-      console.log('   Intent:', payload.intent);
-    }
-
-    try {
-      const resp$ = this.http.post<TagResponse>(endpoint, payload);
-      const result = await firstValueFrom(resp$);
-      
-      if (isDev) {
-        console.log('✅ [FRONTEND] Tags received:', result.tags.length);
-        console.log('   Source:', result.fallback ? 'Fallback (Static)' : 'AI Generated');
-      }
-      
-      return result;
-    } catch (error) {
-      // If API fails, we return a "failure" response so the component can use its internal static data
-      if (isDev) console.warn('⚠️ [FRONTEND] Tag generation API failed, switching to local fallback');
-      return { success: false, tags: [], fallback: true };
-    }
-  }
 }

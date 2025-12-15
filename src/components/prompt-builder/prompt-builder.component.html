@@ -94,6 +94,14 @@
               <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
             </svg>
             Smart Suggestions
+            <button (click)="refreshSmartTags()" class="ml-2 text-gray-400 hover:text-indigo-600 transition-colors" title="Refresh Suggestions">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            @if (isLoadingTags()) {
+              <span class="ml-2 text-xs text-indigo-500 animate-pulse">Generating...</span>
+            }
           </label>
           <div class="flex flex-wrap gap-2">
             @for (tag of availableSmartTags(); track tag; let i = $index) {
@@ -130,11 +138,11 @@
           @if (revealStage() === 2) {
             <div class="mt-4 animate-fade-in-down">
               <p class="text-xs text-indigo-600 font-medium mb-2 flex items-center gap-1">
-                💡 2 more recommendations based on your selection
+                💡 5 more recommendations based on your selection
               </p>
               <div class="flex flex-wrap gap-2">
                 @for (tag of availableSmartTags(); track tag; let i = $index) {
-                  @if (i >= 3) {
+                  @if (i >= 3 && i < 8) {
                     <button
                       (click)="toggleSmartTag(tag)"
                       [class.bg-indigo-50]="selectedSmartTags().includes(tag)"
