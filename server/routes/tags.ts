@@ -7,32 +7,6 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 const apiKey = process.env.GEMINI_API_SECRET;
 const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-// Fallback/Static data for when AI fails or is unavailable
-// This mirrors the frontend structure for consistency
-const FALLBACK_TAGS: Record<string, Record<string, string[]>> = {
-  'Teacher': {
-    'Generate Questions': ['Multiple Choice Questions', 'Critical Thinking Tasks', 'Real World Application', 'Blooms Taxonomy Levels', 'Include Answer Key'],
-    'Create Explanation': ['Step By Step Guide', 'Include Visual Aids', 'Real Life Examples', 'Common Student Mistakes', 'Interactive Class Elements'],
-    'Simplify Weak': ['Focus Core Concepts', 'Use Visual Analogies', 'Easy Practice Problems', 'Build Student Confidence', 'Step By Step Guide'],
-    'Use Analogy': ['Everyday Life Analogy', 'Sports Related Analogy', 'Cooking Baking Analogy', 'Nature Based Analogy', 'Modern Tech Analogy'],
-    'Latest Research': ['Key Research Findings', 'Research Methodology Details', 'Practical Classroom Implications', 'Brief Research Summary', 'Include Academic Citations']
-  },
-  'Parents': {
-    'Help Homework': ['Step By Step Guide', 'Dont Solve Directly', 'Ask Guiding Questions', 'Offer Encouragement Words', 'Check Child Understanding'],
-    'Help Project': ['Brainstorming Session Ideas', 'Required Materials List', 'Project Timeline Plan', 'Creative Project Ideas', 'Safety Precautions Tips'],
-    'Explain Simply': ['Explain Like Five', 'Real World Examples', 'No Complex Jargon', 'Use Visual Aids', 'Include Fun Facts'],
-    'Find Resources': ['Educational Video Links', 'Readable Article Links', 'Learning Game Links', 'Book Recommendations List', 'Printable Worksheet Links'],
-    'Play & Learn': ['Educational Game Ideas', 'Outdoor Activity Ideas', 'DIY Craft Project', 'Home Science Experiment', 'Interactive Storytelling Time']
-  },
-  'Students': {
-    'Homework Help': ['Explain Core Concept', 'Give Helpful Hint', 'Show Similar Example', 'Step By Step Guide', 'Check My Answer'],
-    'Project Ideas': ['Creative Project Ideas', 'Feasible For Student', 'Unique Project Angle', 'Science Fair Project', 'Artistic Project Ideas'],
-    'Learn Concept': ['Deep Dive Explanation', 'Brief Topic Summary', 'Key Learning Points', 'Quiz Me Now', 'Real World Examples'],
-    'Exam Prep': ['Practice Exam Questions', 'Flashcard Study Points', 'One Page Summary', 'Time Management Tips', 'List Key Formulas'],
-    'Clear Doubt': ['Simple Clear Explanation', 'Use Simple Analogy', 'Show Concrete Example', 'Describe Visual Diagram', 'Explain Why How']
-  }
-};
-
 router.post('/generate', async (req: Request, res: Response) => {
   const { topic, intent, persona, stage, selectedTags = [], visibleTags = [] } = req.body;
 
