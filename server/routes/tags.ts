@@ -59,12 +59,19 @@ router.post('/generate', async (req: Request, res: Response) => {
     
     const systemInstruction = `You are an expert educational prompt engineer. Your task is to generate "Smart Tags" - short, action-oriented suggestions that help a user refine their prompt.
     
+    Categories:
+    1. Persona Style: Voice/tone (e.g., "Act As Friendly Teacher", "Be Strict Exam Coach")
+    2. Add Context: Curriculum/level (e.g., "Follow CBSE Style", "Use Class 10 Level")
+    3. Task Instruction: Core action (e.g., "Generate Practice Questions", "Explain Key Concepts")
+    4. Format Constraints: Output structure (e.g., "Give Bullet Points", "Make Short Notes")
+    5. Reasoning Help: Cognitive scaffolding (e.g., "Explain Step By Step", "Add Simple Analogy")
+
     Constraints:
     1. Each tag must be exactly 3 to 4 words long.
     2. Each tag must start with a strong verb (e.g., Include, Add, Explain, Give, Use, Make, Provide, Compare, Highlight).
     3. Tags must be safe for students and appropriate for a school setting.
     4. Do NOT duplicate any of these existing tags: ${existingTags.join(', ')}.
-    5. Return exactly ${count} tags.
+    5. Generate exactly ${count} tags IN TOTAL across all categories combined. Pick the most relevant categories for the user's intent.
     `;
 
     const userPrompt = `Generate ${count} smart tags for a prompt about "${topic}".
@@ -76,13 +83,13 @@ router.post('/generate', async (req: Request, res: Response) => {
     const responseSchema = {
       type: Type.OBJECT,
       properties: {
-        tags: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING },
-          description: "List of generated smart tags"
-        }
+        personaStyle: { type: Type.ARRAY, items: { type: Type.STRING } },
+        addContext: { type: Type.ARRAY, items: { type: Type.STRING } },
+        taskInstruction: { type: Type.ARRAY, items: { type: Type.STRING } },
+        formatConstraints: { type: Type.ARRAY, items: { type: Type.STRING } },
+        reasoningHelp: { type: Type.ARRAY, items: { type: Type.STRING } }
       },
-      required: ["tags"]
+      required: ["personaStyle", "addContext", "taskInstruction", "formatConstraints", "reasoningHelp"]
     };
 
     // 5. Call Gemini
@@ -98,33 +105,46 @@ router.post('/generate', async (req: Request, res: Response) => {
     });
 
     // 6. Parse Response
-    const responseText = (result as any).text?.() ?? (result as any).text ?? '';
-    const data = JSON.parse(responseText);
-    let generatedTags: string[] = data.tags || [];
+    const responseText = result.response.text();
+    const parsed = JSON.parse(responseText);
 
     if (isDevelopment) {
-      console.log('   Raw Tags:', generatedTags);
+      console.log('   Raw Groups:', parsed);
     }
 
-    // 7. Validate Tags (Word count & Verb check)
-    generatedTags = generatedTags.filter(tag => {
-      const words = tag.trim().split(/\s+/);
-      const wordCount = words.length;
-      // Check word count (3-4)
-      if (wordCount < 3 || wordCount > 4) return false;
-      return true;
-    });
+    // Helper to validate a list of tags
+    const validateTags = (tags: string[]) => {
+      if (!Array.isArray(tags)) return [];
+      return tags.filter(tag => {
+        const words = tag.trim().split(/\s+/);
+        return words.length >= 3 && words.length <= 4;
+      });
+    };
 
-    if (generatedTags.length === 0) {
+    const groups = {
+      personaStyle: validateTags(parsed.personaStyle),
+      addContext: validateTags(parsed.addContext),
+      taskInstruction: validateTags(parsed.taskInstruction),
+      formatConstraints: validateTags(parsed.formatConstraints),
+      reasoningHelp: validateTags(parsed.reasoningHelp)
+    };
+    
+    const allTags = [
+      ...groups.personaStyle,
+      ...groups.addContext,
+      ...groups.taskInstruction,
+      ...groups.formatConstraints,
+      ...groups.reasoningHelp
+    ];
+
+    if (allTags.length === 0) {
        throw new Error('No valid tags generated after validation');
     }
 
-    // Limit to requested count
-    const finalTags = generatedTags.slice(0, count);
-
-    res.json({
-      success: true,
-      tags: finalTags,
+    res.json({ 
+      success: true, 
+      groups: groups,
+      tags: allTags,
       fallback: false
     });
 

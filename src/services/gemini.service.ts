@@ -3,12 +3,26 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { PromptAnalysis } from '../models/prompt-analysis.model';
 import { environment } from '../environments/environment';
+import { SmartTag, TagCategory } from '../models/smart-tag.model';
 
-// Define interface for Tag Response
-export interface TagResponse {
+// Define interface for Tag Response from API
+export interface ApiTagResponse {
   success: boolean;
+  groups?: {
+    personaStyle: string[];
+    addContext: string[];
+    taskInstruction: string[];
+    formatConstraints: string[];
+    reasoningHelp: string[];
+  };
   tags: string[];
-  metadata?: any;
+  fallback?: boolean;
+  message?: string;
+}
+
+export interface ServiceTagResponse {
+  success: boolean;
+  tags: SmartTag[];
   fallback?: boolean;
   message?: string;
 }
@@ -26,15 +40,37 @@ export class GeminiService {
     stage: number;
     selectedTags?: string[];
     avoidDuplicates?: boolean;
-  }): Promise<TagResponse> {
+  }): Promise<ServiceTagResponse> {
     const endpoint = `${environment.apiBase}/tags/generate`;
     try {
-      const resp$ = this.http.post<{ tags: string[] }>(endpoint, params);
+      const resp$ = this.http.post<ApiTagResponse>(endpoint, params);
       const result = await firstValueFrom(resp$);
-      return { success: true, tags: result.tags };
+      
+      // Transform to SmartTag[]
+      let smartTags: SmartTag[] = [];
+      if (result.groups) {
+        const addTags = (list: string[], category: TagCategory) => {
+          if (list) list.forEach(t => smartTags.push({ text: t, category }));
+        };
+        addTags(result.groups.personaStyle, 'Persona Style');
+        addTags(result.groups.addContext, 'Add Context');
+        addTags(result.groups.taskInstruction, 'Task Instruction');
+        addTags(result.groups.formatConstraints, 'Format Constraints');
+        addTags(result.groups.reasoningHelp, 'Reasoning Help');
+      } else {
+        // Fallback if groups missing but tags present
+        smartTags = result.tags.map(t => ({ text: t, category: 'Task Instruction' as TagCategory }));
+      }
+
+      return { 
+        success: result.success, 
+        tags: smartTags, 
+        fallback: result.fallback, 
+        message: result.message 
+      };
     } catch (error) {
       console.error('Failed to generate tags:', error);
-      return { success: false, tags: [] };
+      return { success: false, tags: [], message: (error as any).message };
     }
   }
 

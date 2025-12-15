@@ -1,24 +1,25 @@
 export type Intent = 'learn' | 'test' | 'revise' | 'doubt';
 
-export type TagCategory = 'role' | 'context' | 'output' | 'tone' | 'thinking';
+export type TagCategory = 'Persona Style' | 'Add Context' | 'Task Instruction' | 'Format Constraints' | 'Reasoning Help';
+
+export interface SmartTag {
+  text: string;
+  category: TagCategory;
+}
 
 export interface SmartTagsResponse {
-  success?: boolean;
-  role: string[];
-  context: string[];
-  output: string[];
-  tone: string[];
-  thinking: string[];
-  tags?: {
-    role: string[];
-    context: string[];
-    output: string[];
-    tone: string[];
-    thinking: string[];
+  success: boolean;
+  groups?: {
+    personaStyle: string[];
+    addContext: string[];
+    taskInstruction: string[];
+    formatConstraints: string[];
+    reasoningHelp: string[];
   };
-  metadata?: DetectedMeta;
+  tags: string[]; // Flat list for backward compatibility or simple use
   fallback?: boolean;
   message?: string;
+  metadata?: DetectedMeta;
 }
 
 export interface DetectedMeta {

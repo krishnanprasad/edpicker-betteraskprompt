@@ -22,15 +22,15 @@ export class SmartTagBuilderComponent {
 
   // Category configurations with colors
   categoryConfig: Record<TagCategory, { label: string; color: string; bgLight: string; bgSelected: string; border: string; borderSelected: string }> = {
-    role: {
-      label: 'ROLE',
+    'Persona Style': {
+      label: 'PERSONA',
       color: 'text-orange-700',
       bgLight: 'bg-orange-50',
       bgSelected: 'bg-orange-100',
       border: 'border-orange-300',
       borderSelected: 'border-orange-600'
     },
-    context: {
+    'Add Context': {
       label: 'CONTEXT',
       color: 'text-blue-700',
       bgLight: 'bg-blue-50',
@@ -38,29 +38,29 @@ export class SmartTagBuilderComponent {
       border: 'border-blue-300',
       borderSelected: 'border-blue-600'
     },
-    output: {
-      label: 'OUTPUT',
+    'Format Constraints': {
+      label: 'FORMAT',
       color: 'text-green-700',
       bgLight: 'bg-green-50',
       bgSelected: 'bg-green-100',
       border: 'border-green-300',
       borderSelected: 'border-green-600'
     },
-    tone: {
-      label: 'TONE',
-      color: 'text-yellow-700',
-      bgLight: 'bg-yellow-50',
-      bgSelected: 'bg-yellow-100',
-      border: 'border-yellow-400',
-      borderSelected: 'border-yellow-600'
-    },
-    thinking: {
-      label: 'THINKING',
+    'Task Instruction': {
+      label: 'TASK',
       color: 'text-purple-700',
       bgLight: 'bg-purple-50',
       bgSelected: 'bg-purple-100',
       border: 'border-purple-300',
       borderSelected: 'border-purple-600'
+    },
+    'Reasoning Help': {
+      label: 'REASONING',
+      color: 'text-pink-700',
+      bgLight: 'bg-pink-50',
+      bgSelected: 'bg-pink-100',
+      border: 'border-pink-300',
+      borderSelected: 'border-pink-600'
     }
   };
 

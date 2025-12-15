@@ -104,28 +104,31 @@
             }
           </label>
           <div class="flex flex-wrap gap-2">
-            @for (tag of availableSmartTags(); track tag; let i = $index) {
+            @for (tag of availableSmartTags(); track tag.text; let i = $index) {
               @if (i < 3) {
                 <button
                   (click)="toggleSmartTag(tag)"
-                  [class.bg-indigo-50]="selectedSmartTags().includes(tag)"
-                  [class.border-indigo-500]="selectedSmartTags().includes(tag)"
-                  [class.border-2]="selectedSmartTags().includes(tag)"
-                  [class.text-indigo-900]="selectedSmartTags().includes(tag)"
-                  [class.shadow-md]="selectedSmartTags().includes(tag)"
-                  [class.scale-105]="selectedSmartTags().includes(tag)"
-                  [class.-translate-y-0.5]="selectedSmartTags().includes(tag)"
+                  [class.bg-indigo-50]="selectedSmartTags().includes(tag.text)"
+                  [class.border-indigo-500]="selectedSmartTags().includes(tag.text)"
+                  [class.border-2]="selectedSmartTags().includes(tag.text)"
+                  [class.text-indigo-900]="selectedSmartTags().includes(tag.text)"
+                  [class.shadow-md]="selectedSmartTags().includes(tag.text)"
+                  [class.scale-105]="selectedSmartTags().includes(tag.text)"
+                  [class.-translate-y-0.5]="selectedSmartTags().includes(tag.text)"
                   
-                  [class.bg-white]="!selectedSmartTags().includes(tag)"
-                  [class.border-gray-200]="!selectedSmartTags().includes(tag)"
-                  [class.border]="!selectedSmartTags().includes(tag)"
-                  [class.text-gray-600]="!selectedSmartTags().includes(tag)"
+                  [class.bg-white]="!selectedSmartTags().includes(tag.text)"
+                  [class.border-gray-200]="!selectedSmartTags().includes(tag.text)"
+                  [class.border]="!selectedSmartTags().includes(tag.text)"
+                  [class.text-gray-600]="!selectedSmartTags().includes(tag.text)"
                   
                   class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 animate-fade-in-down flex items-center gap-2 group"
                   [style.animation-delay]="i * 100 + 'ms'"
                 >
-                  <span>{{ tag }}</span>
-                  @if (selectedSmartTags().includes(tag)) {
+                  <div class="flex flex-col items-start text-left">
+                    <span class="text-[10px] uppercase tracking-wider font-bold text-indigo-400 mb-0.5">{{ tag.category }}</span>
+                    <span>{{ tag.text }}</span>
+                  </div>
+                  @if (selectedSmartTags().includes(tag.text)) {
                     <span class="bg-indigo-200 text-indigo-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">✓</span>
                   } @else {
                     <span class="text-gray-400 group-hover:text-indigo-500 transition-colors">+</span>
@@ -141,28 +144,31 @@
                 💡 5 more recommendations based on your selection
               </p>
               <div class="flex flex-wrap gap-2">
-                @for (tag of availableSmartTags(); track tag; let i = $index) {
+                @for (tag of availableSmartTags(); track tag.text; let i = $index) {
                   @if (i >= 3 && i < 8) {
                     <button
                       (click)="toggleSmartTag(tag)"
-                      [class.bg-indigo-50]="selectedSmartTags().includes(tag)"
-                      [class.border-indigo-500]="selectedSmartTags().includes(tag)"
-                      [class.border-2]="selectedSmartTags().includes(tag)"
-                      [class.text-indigo-900]="selectedSmartTags().includes(tag)"
-                      [class.shadow-md]="selectedSmartTags().includes(tag)"
-                      [class.scale-105]="selectedSmartTags().includes(tag)"
-                      [class.-translate-y-0.5]="selectedSmartTags().includes(tag)"
+                      [class.bg-indigo-50]="selectedSmartTags().includes(tag.text)"
+                      [class.border-indigo-500]="selectedSmartTags().includes(tag.text)"
+                      [class.border-2]="selectedSmartTags().includes(tag.text)"
+                      [class.text-indigo-900]="selectedSmartTags().includes(tag.text)"
+                      [class.shadow-md]="selectedSmartTags().includes(tag.text)"
+                      [class.scale-105]="selectedSmartTags().includes(tag.text)"
+                      [class.-translate-y-0.5]="selectedSmartTags().includes(tag.text)"
                       
-                      [class.bg-white]="!selectedSmartTags().includes(tag)"
-                      [class.border-gray-200]="!selectedSmartTags().includes(tag)"
-                      [class.border]="!selectedSmartTags().includes(tag)"
-                      [class.text-gray-600]="!selectedSmartTags().includes(tag)"
+                      [class.bg-white]="!selectedSmartTags().includes(tag.text)"
+                      [class.border-gray-200]="!selectedSmartTags().includes(tag.text)"
+                      [class.border]="!selectedSmartTags().includes(tag.text)"
+                      [class.text-gray-600]="!selectedSmartTags().includes(tag.text)"
                       
                       class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 animate-fade-in-down flex items-center gap-2 group"
                       [style.animation-delay]="(i - 3) * 100 + 'ms'"
                     >
-                      <span>{{ tag }}</span>
-                      @if (selectedSmartTags().includes(tag)) {
+                      <div class="flex flex-col items-start text-left">
+                        <span class="text-[10px] uppercase tracking-wider font-bold text-indigo-400 mb-0.5">{{ tag.category }}</span>
+                        <span>{{ tag.text }}</span>
+                      </div>
+                      @if (selectedSmartTags().includes(tag.text)) {
                         <span class="bg-indigo-200 text-indigo-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">✓</span>
                       } @else {
                         <span class="text-gray-400 group-hover:text-indigo-500 transition-colors">+</span>

@@ -7,7 +7,8 @@ import {
   TagItem, 
   DetectedMeta, 
   SmartTagsResponse, 
-  PromptRequest 
+  PromptRequest,
+  TagCategory
 } from '../models/smart-tag.model';
 
 @Injectable({
@@ -184,27 +185,25 @@ export class SmartTagService {
         let idCounter = 1;
         
         // Map backend categories to frontend categories
-        // Backend: role, task, context, format, constraints
-        // Frontend: role, context, output, tone, thinking
-        
-        const categoryMap: Record<string, string> = {
-          'role': 'role',
-          'context': 'context',
-          'format': 'output',
-          'constraints': 'tone', // Mapping constraints to tone for now
-          'task': 'thinking'     // Mapping task to thinking for now
+        const categoryMap: Record<string, TagCategory> = {
+          'personaStyle': 'Persona Style',
+          'addContext': 'Add Context',
+          'taskInstruction': 'Task Instruction',
+          'formatConstraints': 'Format Constraints',
+          'reasoningHelp': 'Reasoning Help'
         };
 
-        Object.keys(response.tags).forEach(backendCat => {
-           const frontendCat = categoryMap[backendCat] || backendCat;
+        const groups = response.groups || {};
+        Object.keys(groups).forEach(backendCat => {
+           const frontendCat = categoryMap[backendCat];
            // Only process if it's a valid frontend category
-           if (['role', 'context', 'output', 'tone', 'thinking'].includes(frontendCat)) {
-             const categoryTags = response.tags[backendCat] || [];
+           if (frontendCat) {
+             const categoryTags = (groups as any)[backendCat] || [];
              categoryTags.forEach((text: string) => {
                tags.push({
                  id: `tag-${idCounter++}`,
                  text,
-                 category: frontendCat as any,
+                 category: frontendCat,
                  selected: false
                });
              });
@@ -212,13 +211,13 @@ export class SmartTagService {
         });
 
         // Ensure at least one tag exists for each category
-        const requiredCategories = ['role', 'context', 'output', 'tone', 'thinking'];
-        const safeDefaults: Record<string, string> = {
-          'role': 'Act as expert teacher',
-          'context': 'For student learning topic',
-          'output': 'Use clear bullet points',
-          'tone': 'Simple and encouraging tone',
-          'thinking': 'Explain key concepts clearly'
+        const requiredCategories: TagCategory[] = ['Persona Style', 'Add Context', 'Task Instruction', 'Format Constraints', 'Reasoning Help'];
+        const safeDefaults: Record<TagCategory, string> = {
+          'Persona Style': 'Act as expert teacher',
+          'Add Context': 'For student learning topic',
+          'Format Constraints': 'Use clear bullet points',
+          'Task Instruction': 'Explain key concepts clearly',
+          'Reasoning Help': 'Step-by-step explanation'
         };
 
         requiredCategories.forEach(cat => {
@@ -227,7 +226,7 @@ export class SmartTagService {
             tags.push({
               id: `tag-default-${cat}-${idCounter++}`,
               text: safeDefaults[cat],
-              category: cat as any,
+              category: cat,
               selected: false
             });
           }
@@ -264,26 +263,26 @@ export class SmartTagService {
   // Fallback tags for offline/error scenarios
   private useFallbackTags(): void {
     const fallbackTags: TagItem[] = [
-      // Role
-      { id: 'tag-1', text: 'Patient teacher for student', category: 'role', selected: false },
-      { id: 'tag-2', text: 'Friendly study partner', category: 'role', selected: false },
-      { id: 'tag-3', text: 'Expert subject tutor', category: 'role', selected: false },
+      // Persona Style
+      { id: 'tag-1', text: 'Patient teacher for student', category: 'Persona Style', selected: false },
+      { id: 'tag-2', text: 'Friendly study partner', category: 'Persona Style', selected: false },
+      { id: 'tag-3', text: 'Expert subject tutor', category: 'Persona Style', selected: false },
       
-      // Context
-      { id: 'tag-4', text: 'Class 10 student level', category: 'context', selected: false },
-      { id: 'tag-5', text: 'Exam preparation focus', category: 'context', selected: false },
+      // Add Context
+      { id: 'tag-4', text: 'Class 10 student level', category: 'Add Context', selected: false },
+      { id: 'tag-5', text: 'Exam preparation focus', category: 'Add Context', selected: false },
       
-      // Output (Format)
-      { id: 'tag-6', text: 'Simple bullet points', category: 'output', selected: false },
-      { id: 'tag-7', text: 'Step-by-step examples', category: 'output', selected: false },
+      // Format Constraints
+      { id: 'tag-6', text: 'Simple bullet points', category: 'Format Constraints', selected: false },
+      { id: 'tag-7', text: 'Step-by-step examples', category: 'Format Constraints', selected: false },
       
-      // Tone (Constraints)
-      { id: 'tag-8', text: 'Short and clear explanation', category: 'tone', selected: false },
-      { id: 'tag-9', text: 'No complex jargon', category: 'tone', selected: false },
+      // Persona Style (Tone)
+      { id: 'tag-8', text: 'Short and clear explanation', category: 'Persona Style', selected: false },
+      { id: 'tag-9', text: 'No complex jargon', category: 'Persona Style', selected: false },
       
-      // Thinking (Task)
-      { id: 'tag-10', text: 'Explain core concepts', category: 'thinking', selected: false },
-      { id: 'tag-11', text: 'Create practice quiz', category: 'thinking', selected: false }
+      // Task Instruction
+      { id: 'tag-10', text: 'Explain core concepts', category: 'Task Instruction', selected: false },
+      { id: 'tag-11', text: 'Create practice quiz', category: 'Task Instruction', selected: false }
     ];
     
     this._availableTags.set(fallbackTags);
@@ -394,7 +393,7 @@ export class SmartTagService {
     this._isDefaultPrompt.set(false);
     
     // Find ROLE tag or use default
-    const roleTag = selectedTags.find(t => t.category === 'role');
+    const roleTag = selectedTags.find(t => t.category === 'Persona Style');
     const roleInstruction = roleTag 
       ? `Act as: ${roleTag.text}` 
       : 'Act as a friendly school teacher.';
