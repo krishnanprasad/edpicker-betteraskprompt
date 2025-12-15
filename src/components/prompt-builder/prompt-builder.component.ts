@@ -75,12 +75,15 @@ export class PromptBuilderComponent {
   // Debounce subjects
   topicSubject = new Subject<string>();
 
+  // Recent Prompts
+  recentPrompts = signal<any[]>([]);
+
   currentIntents = computed(() => PERSONA_INTENTS[this.activePersona()]);
 
   promptStrength = computed(() => {
     const count = this.selectedSmartTags().length;
-    if (count >= 5) return { label: 'Expert', color: 'text-green-400', barColor: 'bg-green-500', icon: '🟢', width: '100%' };
-    if (count >= 2) return { label: 'Good', color: 'text-yellow-400', barColor: 'bg-yellow-500', icon: '🟡', width: '66%' };
+    if (count >= 6) return { label: 'Expert', color: 'text-green-400', barColor: 'bg-green-500', icon: '🟢', width: '100%' };
+    if (count >= 3) return { label: 'Good', color: 'text-yellow-400', barColor: 'bg-yellow-500', icon: '🟡', width: '66%' };
     return { label: 'Basic', color: 'text-red-400', barColor: 'bg-red-500', icon: '🔴', width: '33%' };
   });
 
@@ -140,37 +143,8 @@ export class PromptBuilderComponent {
       }
     });
 
-    // Load from localStorage
-    const saved = localStorage.getItem('prompt-builder-draft');
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        this.topic.set(data.topic || '');
-        this.debouncedTopic.set(data.topic || '');
-
-        this.selectedSmartTags.set(data.selectedSmartTags || []);
-        
-        if (data.activePersona) {
-          this.activePersona.set(data.activePersona);
-          // Ensure active intent is valid for current persona, otherwise reset to first
-          if (data.activeIntent && PERSONA_INTENTS[data.activePersona].includes(data.activeIntent)) {
-            this.activeIntent.set(data.activeIntent);
-          } else {
-            this.activeIntent.set(PERSONA_INTENTS[data.activePersona][0]);
-          }
-        }
-        
-        // Restore reveal stage if topic is valid
-        if (this.topic().length >= 4) {
-          this.loadSmartTags(false); // Don't reset selection
-          if (this.selectedSmartTags().length > 0) {
-            this.revealStage.set(2);
-          }
-        }
-      } catch (e) {
-        console.error('Failed to load draft', e);
-      }
-    }
+    // Load recent prompts
+    this.loadRecentPrompts();
 
     // Auto-save effect
     effect(() => {
@@ -202,7 +176,8 @@ export class PromptBuilderComponent {
     // Simulate network check / fallback logic
     // In a real app, this would try an API first, then fall back.
     // Since we are using static data for V1.1/V1.2, this IS the fallback/offline-ready data.
-    const tags = SMART_TAGS_DATA[persona]?.[intent] || [];
+    // Clone to ensure signal update triggers even if same data
+    const tags = [...(SMART_TAGS_DATA[persona]?.[intent] || [])];
     
     // Check if we are "offline" (simulated check or real navigator.onLine)
     if (!navigator.onLine) {
@@ -226,8 +201,8 @@ export class PromptBuilderComponent {
     if (current.includes(tag)) {
       this.selectedSmartTags.set(current.filter(t => t !== tag));
     } else {
-      // Enforce max 5 tags
-      if (current.length >= 5) return;
+      // Enforce max 8 tags
+      if (current.length >= 8) return;
       
       this.selectedSmartTags.set([...current, tag]);
       
@@ -259,6 +234,38 @@ export class PromptBuilderComponent {
     // and let the UI reveal them.
   }
 
+  loadRecentPrompts() {
+    try {
+      const recent = JSON.parse(sessionStorage.getItem('recent-prompts') || '[]');
+      this.recentPrompts.set(recent);
+    } catch (e) {
+      this.recentPrompts.set([]);
+    }
+  }
+
+  useRecentPrompt(recent: any) {
+    this.topic.set(recent.topic);
+    this.debouncedTopic.set(recent.topic);
+    
+    if (recent.persona) {
+      this.setPersona(recent.persona);
+    }
+    
+    if (recent.intent) {
+      this.activeIntent.set(recent.intent);
+    }
+    
+    // We don't restore selected tags to keep it "fresh" but context aware, 
+    // or we could if we stored them. The current saveToHistory doesn't seem to store selectedTags explicitly
+    // but it stores the assembled prompt.
+    // Let's just restore topic/persona/intent which triggers tag loading.
+  }
+
+  clearSession() {
+    sessionStorage.removeItem('recent-prompts');
+    this.recentPrompts.set([]);
+  }
+
   private saveToHistory() {
     const currentTopic = this.topic();
     // Save to session storage (Recent Prompts)
@@ -273,6 +280,7 @@ export class PromptBuilderComponent {
     // Keep last 10
     if (recent.length > 10) recent.pop();
     sessionStorage.setItem('recent-prompts', JSON.stringify(recent));
+    this.recentPrompts.set(recent);
   }
 
   setPersona(persona: Persona) {

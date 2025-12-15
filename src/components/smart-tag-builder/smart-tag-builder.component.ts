@@ -66,25 +66,33 @@ export class SmartTagBuilderComponent {
 
   // Copy state management
   copySuccess = signal<boolean>(false);
-  showPresetBanner = signal<boolean>(false);
+  // showPresetBanner = signal<boolean>(false); // Removed as per requirement
 
   constructor(public tagService: SmartTagService) {
-    // Check if user has a saved preset
+    // Removed auto-preset banner logic
+    /*
     if (tagService.hasPreset() && !tagService.isOnboardingComplete()) {
       setTimeout(() => {
         this.showPresetBanner.set(true);
       }, 1000);
     }
+    */
   }
   
   // Load last preset
   useLastSetup() {
     this.tagService.loadLastPreset();
-    this.showPresetBanner.set(false);
+    // this.showPresetBanner.set(false);
   }
   
+  /*
   dismissPresetBanner() {
     this.showPresetBanner.set(false);
+  }
+  */
+
+  clearSession() {
+    this.tagService.clearSession();
   }
   
   // Use recent prompt

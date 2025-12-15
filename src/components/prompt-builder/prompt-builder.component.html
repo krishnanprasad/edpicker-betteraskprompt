@@ -290,4 +290,46 @@
       </div>
     </div>
   </div>
+
+  <!-- Recent Prompts Section -->
+  @if (recentPrompts().length > 0) {
+    <div class="mt-12 border-t border-gray-200 pt-8">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Recent Prompts
+        </h3>
+        <button 
+          (click)="clearSession()"
+          class="text-sm text-red-600 hover:text-red-800 font-medium flex items-center gap-1 px-3 py-1 rounded-lg hover:bg-red-50 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          Clear Session
+        </button>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        @for (recent of recentPrompts(); track recent.date) {
+          <div class="bg-white p-4 rounded-xl border border-gray-200 hover:shadow-md transition-all group">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+                {{ recent.persona }}
+              </span>
+              <span class="text-xs text-gray-400">{{ recent.date | date:'shortTime' }}</span>
+            </div>
+            <h4 class="font-bold text-gray-800 mb-1 truncate">{{ recent.topic }}</h4>
+            <p class="text-xs text-gray-500 mb-3">{{ recent.intent }}</p>
+            <button 
+              (click)="useRecentPrompt(recent)"
+              class="w-full py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+              Load This Prompt
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
 </div>

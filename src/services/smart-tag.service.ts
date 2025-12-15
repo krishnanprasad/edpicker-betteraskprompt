@@ -53,7 +53,7 @@ export class SmartTagService {
   );
   
   readonly selectedCount = computed(() => this._selectedTags().length);
-  readonly canSelectMore = computed(() => this._selectedTags().length < 5);
+  readonly canSelectMore = computed(() => this._selectedTags().length < 8);
   
   // Debounce timer
   private debounceTimer: any = null;
@@ -214,11 +214,11 @@ export class SmartTagService {
         // Ensure at least one tag exists for each category
         const requiredCategories = ['role', 'context', 'output', 'tone', 'thinking'];
         const safeDefaults: Record<string, string> = {
-          'role': 'Act as an expert teacher',
-          'context': 'For a student learning this topic',
+          'role': 'Act as expert teacher',
+          'context': 'For student learning topic',
           'output': 'Use clear bullet points',
-          'tone': 'Keep it simple and encouraging',
-          'thinking': 'Explain the key concepts'
+          'tone': 'Simple and encouraging tone',
+          'thinking': 'Explain key concepts clearly'
         };
 
         requiredCategories.forEach(cat => {
@@ -265,31 +265,31 @@ export class SmartTagService {
   private useFallbackTags(): void {
     const fallbackTags: TagItem[] = [
       // Role
-      { id: 'tag-1', text: 'Act as a patient teacher explaining to a student', category: 'role', selected: false },
-      { id: 'tag-2', text: 'Act as a friendly study partner', category: 'role', selected: false },
-      { id: 'tag-3', text: 'Act as an expert tutor in this subject', category: 'role', selected: false },
+      { id: 'tag-1', text: 'Patient teacher for student', category: 'role', selected: false },
+      { id: 'tag-2', text: 'Friendly study partner', category: 'role', selected: false },
+      { id: 'tag-3', text: 'Expert subject tutor', category: 'role', selected: false },
       
       // Context
-      { id: 'tag-4', text: 'Student in class 10 studying this topic', category: 'context', selected: false },
-      { id: 'tag-5', text: 'Preparing for understanding and exams', category: 'context', selected: false },
+      { id: 'tag-4', text: 'Class 10 student level', category: 'context', selected: false },
+      { id: 'tag-5', text: 'Exam preparation focus', category: 'context', selected: false },
       
       // Output (Format)
-      { id: 'tag-6', text: 'Use simple bullet points', category: 'output', selected: false },
-      { id: 'tag-7', text: 'Provide step-by-step examples', category: 'output', selected: false },
+      { id: 'tag-6', text: 'Simple bullet points', category: 'output', selected: false },
+      { id: 'tag-7', text: 'Step-by-step examples', category: 'output', selected: false },
       
       // Tone (Constraints)
-      { id: 'tag-8', text: 'Keep explanations short and clear', category: 'tone', selected: false },
-      { id: 'tag-9', text: 'Avoid complex jargon', category: 'tone', selected: false },
+      { id: 'tag-8', text: 'Short and clear explanation', category: 'tone', selected: false },
+      { id: 'tag-9', text: 'No complex jargon', category: 'tone', selected: false },
       
       // Thinking (Task)
-      { id: 'tag-10', text: 'Explain the core concepts simply', category: 'thinking', selected: false },
-      { id: 'tag-11', text: 'Create a practice quiz with answers', category: 'thinking', selected: false }
+      { id: 'tag-10', text: 'Explain core concepts', category: 'thinking', selected: false },
+      { id: 'tag-11', text: 'Create practice quiz', category: 'thinking', selected: false }
     ];
     
     this._availableTags.set(fallbackTags);
   }
   
-  // Toggle tag selection (max 5)
+  // Toggle tag selection (max 8)
   toggleTagSelection(tagId: string): void {
     const availableTags = this._availableTags();
     const selectedTags = this._selectedTags();
@@ -310,9 +310,9 @@ export class SmartTagService {
       // Re-detect conflicts after deselection
       this.detectConflicts();
     } else {
-      // Select (enforce max 5)
-      if (selectedTags.length >= 5) {
-        this._error.set('Maximum 5 tags can be selected');
+      // Select (enforce max 8)
+      if (selectedTags.length >= 8) {
+        this._error.set('Maximum 8 tags can be selected');
         return;
       }
       
@@ -523,6 +523,15 @@ Please provide a clear, student-friendly explanation.`;
     const updated = [newRecent, ...recents].slice(0, 3);
     this._recentPrompts.set(updated);
     sessionStorage.setItem('betterask_recent_prompts', JSON.stringify(updated));
+  }
+
+  clearSession(): void {
+    sessionStorage.removeItem('betterask_recent_prompts');
+    this._recentPrompts.set([]);
+    // Also clear last preset from localStorage if we want a truly clean state?
+    // "Add a 'Clear session' action that clears sessionStorage keys used by this app."
+    // It says sessionStorage. But "Make the app open in a clean state every time"
+    // I'll stick to sessionStorage as requested for the button action.
   }
   
   useRecentPrompt(recent: { topic: string; prompt: string; timestamp: number }): void {
