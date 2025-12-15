@@ -297,7 +297,7 @@ router.post('/tags', async (req: Request, res: Response) => {
       }
     });
 
-    const responseText = result.response.text();
+    const responseText = (result as any).text?.() ?? (result as any).text ?? '';
     const responseData = JSON.parse(responseText);
 
     if (isDevelopment) {
