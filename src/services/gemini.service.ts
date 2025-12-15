@@ -27,7 +27,7 @@ export class GeminiService {
     selectedTags?: string[];
     avoidDuplicates?: boolean;
   }): Promise<TagResponse> {
-    const endpoint = `${environment.apiBase}/gemini/tags`;
+    const endpoint = `${environment.apiBase}/tags/generate`;
     try {
       const resp$ = this.http.post<{ tags: string[] }>(endpoint, params);
       const result = await firstValueFrom(resp$);
