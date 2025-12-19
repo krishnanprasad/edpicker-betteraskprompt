@@ -1,5 +1,5 @@
 
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal, effect } from '@angular/core';
 import { PromptAnalyzerComponent } from './components/prompt-analyzer/prompt-analyzer.component';
 import { SmartTagBuilderComponent } from './components/smart-tag-builder/smart-tag-builder.component';
 import { PromptBuilderComponent } from './components/prompt-builder/prompt-builder.component';
@@ -58,5 +58,31 @@ import { CommonModule } from '@angular/common';
 })
 export class AppComponent {
   activeTab = signal<'analyzer' | 'builder' | 'prompt-builder'>('prompt-builder');
+
+  constructor() {
+    // Track page views in GA4 when tab changes
+    effect(() => {
+      const tab = this.activeTab();
+      this.trackPageView(tab);
+    });
+  }
+
+  private trackPageView(tab: 'analyzer' | 'builder' | 'prompt-builder') {
+    const mapping = {
+      analyzer: { title: 'Prompt Analyzer', path: '/analyzer' },
+      'prompt-builder': { title: 'Prompt Builder', path: '/prompt-builder' },
+      builder: { title: 'Smart Tag Builder', path: '/smart-tag-builder' }
+    } as const;
+
+    const { title, path } = mapping[tab];
+    const w = window as any;
+    if (typeof w.gtag === 'function') {
+      w.gtag('event', 'page_view', {
+        page_title: title,
+        page_path: path,
+        page_location: window.location.href
+      });
+    }
+  }
 }
 
