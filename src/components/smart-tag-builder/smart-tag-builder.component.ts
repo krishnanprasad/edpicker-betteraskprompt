@@ -142,6 +142,15 @@ export class SmartTagBuilderComponent {
     // For now, it reloads all tags
     await this.tagService.loadSmartTags();
   }
+  
+  // Output tag methods
+  toggleOutputTag(tagId: string) {
+    this.tagService.toggleOutputTagSelection(tagId);
+  }
+  
+  isOutputTagSelected(tagId: string): boolean {
+    return this.tagService.selectedOutputTags().some(t => t.id === tagId);
+  }
 
   // Generate final prompt
   async generateFinalPrompt() {

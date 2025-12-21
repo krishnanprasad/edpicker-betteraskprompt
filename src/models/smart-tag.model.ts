@@ -7,6 +7,13 @@ export interface SmartTag {
   category: TagCategory;
 }
 
+export interface OutputTagItem {
+  id: string;
+  text: string;
+  isDefault: boolean;
+  selected: boolean;
+}
+
 export interface SmartTagsResponse {
   success: boolean;
   groups?: {
@@ -20,6 +27,13 @@ export interface SmartTagsResponse {
   fallback?: boolean;
   message?: string;
   metadata?: DetectedMeta;
+}
+
+export interface OutputSuggestionsResponse {
+  success: boolean;
+  suggestions: string[];
+  fallback?: boolean;
+  message?: string;
 }
 
 export interface DetectedMeta {
