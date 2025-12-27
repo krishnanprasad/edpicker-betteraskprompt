@@ -65,8 +65,11 @@ export class PromptBuilderComponent {
   // Smart Tags State
   availableSmartTags = signal<SmartTag[]>([]);
   selectedSmartTags = signal<string[]>([]);
-  revealStage = signal<0 | 1 | 2>(0); // 0: Hidden, 1: First 3, 2: All 8
   isLoadingTags = signal(false);
+
+  // Output Tags State
+  availableOutputTags = signal<{id: string, text: string, isDefault: boolean}[]>([]);
+  selectedOutputTags = signal<string[]>([]);
   
   // Validation state
   topicError = signal<string | null>(null);
@@ -122,7 +125,13 @@ export class PromptBuilderComponent {
       parts.push(`Key Requirements:\n- Explain the concept clearly and simply.\n- Ensure the content is appropriate for a ${this.activePersona()}.`);
     }
 
-    // 3. Clear Output Instruction
+    // 3. Output Format
+    const outputTags = this.selectedOutputTags();
+    if (outputTags.length > 0) {
+      parts.push(`Output Format:\n- ${outputTags.join('\n- ')}`);
+    }
+
+    // 4. Clear Output Instruction
     parts.push(`Output Instruction: Please generate a response that directly addresses the topic and intent, strictly adhering to the requirements above.`);
     
     return parts.join('\n\n');
@@ -141,7 +150,8 @@ export class PromptBuilderComponent {
       if (value.length >= 4) {
         this.loadSmartTags();
       } else {
-        this.revealStage.set(0);
+        this.availableSmartTags.set([]);
+        this.availableOutputTags.set([]);
       }
     });
 
@@ -155,7 +165,6 @@ export class PromptBuilderComponent {
     
     // Clear state on class change
     this.selectedSmartTags.set([]);
-    this.revealStage.set(0);
     
     // Reload tags if topic is present
     if (this.topic().length >= 4) {
@@ -183,44 +192,71 @@ export class PromptBuilderComponent {
 
     this.isLoadingTags.set(true);
     
-    // Try AI first
-    const aiResponse = await this.geminiService.generateSmartTags({
-      topic,
-      intent,
-      persona,
-      stage: 1,
-      selectedTags: [],
-      avoidDuplicates: true
-    });
+    // Clear existing to prevent flash
+    this.availableSmartTags.set([]);
+    this.availableOutputTags.set([]);
+    
+    try {
+      const [aiResponse, outputResponse] = await Promise.all([
+        this.geminiService.generateSmartTags({
+          topic,
+          intent,
+          persona,
+          stage: 1,
+          selectedTags: [],
+          avoidDuplicates: true
+        }),
+        this.geminiService.generateOutputSuggestions({
+          topic,
+          intent,
+          persona,
+          selectedSmartTags: [],
+          selectedOutputTags: []
+        })
+      ]);
 
-    if (aiResponse.success && aiResponse.tags.length > 0) {
-      const normalizedTags = this.normalizeTags(aiResponse.tags);
-      this.availableSmartTags.set(normalizedTags);
-      
-      if (aiResponse.fallback) {
-        const msg = aiResponse.message || 'Using fallback suggestions.';
+      if (aiResponse.success && aiResponse.tags.length > 0) {
+        const normalizedTags = this.normalizeTags(aiResponse.tags);
+        this.availableSmartTags.set(normalizedTags);
+        
+        if (aiResponse.fallback) {
+          const msg = aiResponse.message || 'Using fallback suggestions.';
+          this.bannerMessage.set(`⚠️ ${msg}`);
+          setTimeout(() => this.bannerMessage.set(null), 5000);
+        }
+
+        if (resetSelection) {
+          this.selectedSmartTags.set([]);
+        }
+      } else {
+        // Fallback: Use fixed list
+        this.availableSmartTags.set(FALLBACK_TAGS[persona]);
+        
+        const msg = aiResponse.message || 'Using offline suggestions.';
         this.bannerMessage.set(`⚠️ ${msg}`);
         setTimeout(() => this.bannerMessage.set(null), 5000);
       }
 
-      if (resetSelection) {
-        this.selectedSmartTags.set([]);
-        this.revealStage.set(1); // Show first 3
-      } else {
-        // If restoring, ensure we show enough tags
-        this.revealStage.set(this.selectedSmartTags().length > 0 ? 2 : 1);
-      }
-    } else {
-      // Fallback: Use fixed list
-      this.availableSmartTags.set(FALLBACK_TAGS[persona]);
-      this.revealStage.set(1);
+      // Handle Output Tags
+      const outputTags = [
+        { id: 'def-1', text: 'Bullet points', isDefault: true },
+        { id: 'def-2', text: 'Short summary', isDefault: true }
+      ];
       
-      const msg = aiResponse.message || 'Using offline suggestions.';
-      this.bannerMessage.set(`⚠️ ${msg}`);
-      setTimeout(() => this.bannerMessage.set(null), 5000);
-    }
+      if (outputResponse.success && outputResponse.suggestions) {
+        outputResponse.suggestions.slice(0, 3).forEach((text, idx) => {
+          outputTags.push({ id: `ai-${idx}`, text, isDefault: false });
+        });
+      }
+      this.availableOutputTags.set(outputTags);
+      
+      if (resetSelection) {
+        this.selectedOutputTags.set(['Bullet points']);
+      }
 
-    this.isLoadingTags.set(false);
+    } finally {
+      this.isLoadingTags.set(false);
+    }
   }
 
   normalizeTags(tags: SmartTag[]): SmartTag[] {
@@ -237,57 +273,30 @@ export class PromptBuilderComponent {
     );
   }
 
-  refreshSmartTags() {
+  refreshTags() {
     this.loadSmartTags(true);
   }
 
-  toggleSmartTag(tag: SmartTag) {
+  toggleSmartTag(tagText: string) {
     const current = this.selectedSmartTags();
-    if (current.includes(tag.text)) {
-      this.selectedSmartTags.set(current.filter(t => t !== tag.text));
+    if (current.includes(tagText)) {
+      this.selectedSmartTags.set(current.filter(t => t !== tagText));
     } else {
       // Enforce max 8 tags
       if (current.length >= 8) return;
-      
-      this.selectedSmartTags.set([...current, tag.text]);
-      
-      // Progressive reveal: if user selects a tag and we are in stage 1, move to stage 2
-      if (this.revealStage() === 1) {
-        this.fetchStage2Tags(); // Fetch next best tags
-        this.revealStage.set(2);
-      }
+      this.selectedSmartTags.set([...current, tagText]);
     }
   }
-
-  async fetchStage2Tags() {
-    const persona = this.activePersona();
-    const intent = this.activeIntent();
-    const topic = this.topic();
-    
-    this.isLoadingTags.set(true);
-
-    // Get currently visible tags to avoid duplicates
-    const currentVisible = this.availableSmartTags().map(t => t.text);
-
-    const aiResponse = await this.geminiService.generateSmartTags({
-      topic,
-      intent,
-      persona,
-      stage: 2,
-      selectedTags: this.selectedSmartTags(),
-      visibleTags: currentVisible,
-      avoidDuplicates: true
-    });
-
-    if (aiResponse.success && aiResponse.tags.length > 0) {
-       // Append, dedupe, cap to 8
-       const current = this.availableSmartTags();
-       const newTags = this.normalizeTags(aiResponse.tags).filter(t => !current.some(c => c.text === t.text));
-       const combined = [...current, ...newTags].slice(0, 8);
-       this.availableSmartTags.set(combined);
+  
+  toggleOutputTag(tagText: string) {
+    const current = this.selectedOutputTags();
+    if (current.includes(tagText)) {
+      this.selectedOutputTags.set(current.filter(t => t !== tagText));
+    } else {
+      // Enforce max 3 output tags
+      if (current.length >= 3) return;
+      this.selectedOutputTags.set([...current, tagText]);
     }
-    
-    this.isLoadingTags.set(false);
   }
 
   loadRecentPrompts() {
@@ -360,7 +369,6 @@ export class PromptBuilderComponent {
     
     // Clear fields except topic/context to reset generated output and selections
     this.selectedSmartTags.set([]);
-    this.revealStage.set(0);
     
     // Re-evaluate smart tags if topic is present
     if (this.topic().length >= 4) {
@@ -377,7 +385,6 @@ export class PromptBuilderComponent {
     
     // Clear selected tags on intent change
     this.selectedSmartTags.set([]);
-    this.revealStage.set(0);
 
     // Reload tags for new intent
     if (this.topic().length >= 4) {
@@ -420,7 +427,6 @@ Built with BetterAskPrompt: ${window.location.origin}`;
       // Reset local state
       this.topic.set('');
       this.selectedSmartTags.set([]);
-      this.revealStage.set(0);
       this.recentPrompts.set([]);
       
       window.location.reload();
@@ -430,7 +436,6 @@ Built with BetterAskPrompt: ${window.location.origin}`;
   clear() {
     if (confirm('Are you sure you want to clear all fields?')) {
       this.selectedSmartTags.set([]);
-      this.revealStage.set(0);
     }
   }
 }

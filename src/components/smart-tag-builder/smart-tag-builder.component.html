@@ -160,7 +160,7 @@
       }
 
       <div class="space-y-8">
-        @for (category of ['role', 'context', 'output', 'tone', 'thinking']; track category) {
+        @for (category of ['Persona Style', 'Add Context', 'Task Instruction', 'Format Constraints', 'Reasoning Help']; track category) {
           @if (getTagsByCategory($any(category)).length > 0) {
             <div>
               <!-- Category Header -->
