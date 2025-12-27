@@ -27,11 +27,35 @@ export interface ServiceTagResponse {
   message?: string;
 }
 
+export interface OutputSuggestionResponse {
+  success: boolean;
+  suggestions: string[];
+  fallback?: boolean;
+  message?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class GeminiService {
   constructor(private http: HttpClient) {}
+
+  async generateOutputSuggestions(params: {
+    topic: string;
+    intent: string;
+    persona: string;
+    selectedSmartTags?: string[];
+    selectedOutputTags?: string[];
+  }): Promise<OutputSuggestionResponse> {
+    const endpoint = `${environment.apiBase}/tags/output-suggestions`;
+    try {
+      const resp$ = this.http.post<OutputSuggestionResponse>(endpoint, params);
+      return await firstValueFrom(resp$);
+    } catch (error) {
+      console.error('Failed to generate output suggestions:', error);
+      return { success: false, suggestions: [], message: (error as any).message };
+    }
+  }
 
   async generateSmartTags(params: {
     topic: string;
