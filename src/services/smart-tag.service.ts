@@ -112,8 +112,7 @@ export class SmartTagService {
     
     if (topic.length >= 4 && this._intent()) {
       this.debounceTimer = setTimeout(() => {
-        this.loadSmartTags();
-        this.loadOutputSuggestions();
+        this.loadAllSuggestions();
       }, 500);
     } else {
       // Clear tags if topic too short
@@ -162,7 +161,7 @@ export class SmartTagService {
   }
   
   // Load smart tags from backend
-  async loadSmartTags(): Promise<void> {
+  async loadSmartTags(manageLoading: boolean = true): Promise<void> {
     const topic = this._topic();
     const intent = this._intent();
     
@@ -177,7 +176,7 @@ export class SmartTagService {
       return;
     }
     
-    this._isLoading.set(true);
+    if (manageLoading) this._isLoading.set(true);
     this._error.set(null);
     
     try {
@@ -221,7 +220,8 @@ export class SmartTagService {
            }
         });
 
-        // Ensure at least one tag exists for each category
+        // Ensure at least one tag exists for each category - REMOVED to respect API count
+        /*
         const requiredCategories: TagCategory[] = ['Persona Style', 'Add Context', 'Task Instruction', 'Format Constraints', 'Reasoning Help'];
         const safeDefaults: Record<TagCategory, string> = {
           'Persona Style': 'Act as expert teacher',
@@ -242,6 +242,7 @@ export class SmartTagService {
             });
           }
         });
+        */
         
         this._availableTags.set(tags);
         this._selectedTags.set([]); // Reset selection when new tags load
@@ -267,6 +268,26 @@ export class SmartTagService {
       this.useFallbackTags();
       this._error.set('API error. Using fallback suggestions.');
     } finally {
+      if (manageLoading) this._isLoading.set(false);
+    }
+  }
+
+  // Load all suggestions (smart tags + output suggestions)
+  async loadAllSuggestions(): Promise<void> {
+    this._isLoading.set(true);
+    
+    // Clear existing tags to prevent flashing old data
+    this._availableTags.set([]);
+    this._outputTags.set([]);
+    this._selectedTags.set([]);
+    this._selectedOutputTags.set([]);
+
+    try {
+      await Promise.all([
+        this.loadSmartTags(false),
+        this.loadOutputSuggestions()
+      ]);
+    } finally {
       this._isLoading.set(false);
     }
   }
@@ -276,24 +297,20 @@ export class SmartTagService {
     const fallbackTags: TagItem[] = [
       // Persona Style
       { id: 'tag-1', text: 'Patient teacher for student', category: 'Persona Style', selected: false },
-      { id: 'tag-2', text: 'Friendly study partner', category: 'Persona Style', selected: false },
-      { id: 'tag-3', text: 'Expert subject tutor', category: 'Persona Style', selected: false },
+      { id: 'tag-2', text: 'Expert subject tutor', category: 'Persona Style', selected: false },
       
       // Add Context
-      { id: 'tag-4', text: 'Class 10 student level', category: 'Add Context', selected: false },
-      { id: 'tag-5', text: 'Exam preparation focus', category: 'Add Context', selected: false },
+      { id: 'tag-3', text: 'Class 10 student level', category: 'Add Context', selected: false },
       
       // Format Constraints
-      { id: 'tag-6', text: 'Simple bullet points', category: 'Format Constraints', selected: false },
-      { id: 'tag-7', text: 'Step-by-step examples', category: 'Format Constraints', selected: false },
+      { id: 'tag-4', text: 'Simple bullet points', category: 'Format Constraints', selected: false },
       
-      // Persona Style (Tone)
-      { id: 'tag-8', text: 'Short and clear explanation', category: 'Persona Style', selected: false },
-      { id: 'tag-9', text: 'No complex jargon', category: 'Persona Style', selected: false },
+      // Reasoning Help
+      { id: 'tag-5', text: 'Step-by-step explanation', category: 'Reasoning Help', selected: false },
       
       // Task Instruction
-      { id: 'tag-10', text: 'Explain core concepts', category: 'Task Instruction', selected: false },
-      { id: 'tag-11', text: 'Create practice quiz', category: 'Task Instruction', selected: false }
+      { id: 'tag-6', text: 'Explain core concepts', category: 'Task Instruction', selected: false },
+      { id: 'tag-7', text: 'Create practice quiz', category: 'Task Instruction', selected: false }
     ];
     
     this._availableTags.set(fallbackTags);
