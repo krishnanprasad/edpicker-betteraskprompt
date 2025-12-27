@@ -8,7 +8,9 @@ import {
   DetectedMeta, 
   SmartTagsResponse, 
   PromptRequest,
-  TagCategory
+  TagCategory,
+  OutputTagItem,
+  OutputSuggestionsResponse
 } from '../models/smart-tag.model';
 
 @Injectable({
@@ -30,6 +32,8 @@ export class SmartTagService {
   private _showOnboarding = signal<boolean>(false);
   private _isOffline = signal<boolean>(false);
   private _recentPrompts = signal<Array<{ topic: string; prompt: string; timestamp: number }>>([]);
+  private _outputTags = signal<OutputTagItem[]>([]);
+  private _selectedOutputTags = signal<OutputTagItem[]>([]);
   
   // Public readonly signals
   readonly intent = this._intent.asReadonly();
@@ -46,6 +50,8 @@ export class SmartTagService {
   readonly showOnboarding = this._showOnboarding.asReadonly();
   readonly isOffline = this._isOffline.asReadonly();
   readonly recentPrompts = this._recentPrompts.asReadonly();
+  readonly outputTags = this._outputTags.asReadonly();
+  readonly selectedOutputTags = this._selectedOutputTags.asReadonly();
   
   // Computed signals
   readonly canGeneratePrompt = computed(() => 
@@ -54,7 +60,9 @@ export class SmartTagService {
   );
   
   readonly selectedCount = computed(() => this._selectedTags().length);
-  readonly canSelectMore = computed(() => this._selectedTags().length < 8);
+  readonly selectedOutputCount = computed(() => this._selectedOutputTags().length);
+  readonly totalSelectedCount = computed(() => this._selectedTags().length + this._selectedOutputTags().length);
+  readonly canSelectMore = computed(() => this.totalSelectedCount() < 10);
   
   // Debounce timer
   private debounceTimer: any = null;
@@ -104,12 +112,14 @@ export class SmartTagService {
     
     if (topic.length >= 4 && this._intent()) {
       this.debounceTimer = setTimeout(() => {
-        this.loadSmartTags();
+        this.loadAllSuggestions();
       }, 500);
     } else {
       // Clear tags if topic too short
       this._availableTags.set([]);
       this._selectedTags.set([]);
+      this._outputTags.set([]);
+      this._selectedOutputTags.set([]);
     }
   }
   
@@ -151,7 +161,7 @@ export class SmartTagService {
   }
   
   // Load smart tags from backend
-  async loadSmartTags(): Promise<void> {
+  async loadSmartTags(manageLoading: boolean = true): Promise<void> {
     const topic = this._topic();
     const intent = this._intent();
     
@@ -166,7 +176,7 @@ export class SmartTagService {
       return;
     }
     
-    this._isLoading.set(true);
+    if (manageLoading) this._isLoading.set(true);
     this._error.set(null);
     
     try {
@@ -210,7 +220,8 @@ export class SmartTagService {
            }
         });
 
-        // Ensure at least one tag exists for each category
+        // Ensure at least one tag exists for each category - REMOVED to respect API count
+        /*
         const requiredCategories: TagCategory[] = ['Persona Style', 'Add Context', 'Task Instruction', 'Format Constraints', 'Reasoning Help'];
         const safeDefaults: Record<TagCategory, string> = {
           'Persona Style': 'Act as expert teacher',
@@ -231,6 +242,7 @@ export class SmartTagService {
             });
           }
         });
+        */
         
         this._availableTags.set(tags);
         this._selectedTags.set([]); // Reset selection when new tags load
@@ -256,6 +268,26 @@ export class SmartTagService {
       this.useFallbackTags();
       this._error.set('API error. Using fallback suggestions.');
     } finally {
+      if (manageLoading) this._isLoading.set(false);
+    }
+  }
+
+  // Load all suggestions (smart tags + output suggestions)
+  async loadAllSuggestions(): Promise<void> {
+    this._isLoading.set(true);
+    
+    // Clear existing tags to prevent flashing old data
+    this._availableTags.set([]);
+    this._outputTags.set([]);
+    this._selectedTags.set([]);
+    this._selectedOutputTags.set([]);
+
+    try {
+      await Promise.all([
+        this.loadSmartTags(false),
+        this.loadOutputSuggestions()
+      ]);
+    } finally {
       this._isLoading.set(false);
     }
   }
@@ -265,30 +297,159 @@ export class SmartTagService {
     const fallbackTags: TagItem[] = [
       // Persona Style
       { id: 'tag-1', text: 'Patient teacher for student', category: 'Persona Style', selected: false },
-      { id: 'tag-2', text: 'Friendly study partner', category: 'Persona Style', selected: false },
-      { id: 'tag-3', text: 'Expert subject tutor', category: 'Persona Style', selected: false },
+      { id: 'tag-2', text: 'Expert subject tutor', category: 'Persona Style', selected: false },
       
       // Add Context
-      { id: 'tag-4', text: 'Class 10 student level', category: 'Add Context', selected: false },
-      { id: 'tag-5', text: 'Exam preparation focus', category: 'Add Context', selected: false },
+      { id: 'tag-3', text: 'Class 10 student level', category: 'Add Context', selected: false },
       
       // Format Constraints
-      { id: 'tag-6', text: 'Simple bullet points', category: 'Format Constraints', selected: false },
-      { id: 'tag-7', text: 'Step-by-step examples', category: 'Format Constraints', selected: false },
+      { id: 'tag-4', text: 'Simple bullet points', category: 'Format Constraints', selected: false },
       
-      // Persona Style (Tone)
-      { id: 'tag-8', text: 'Short and clear explanation', category: 'Persona Style', selected: false },
-      { id: 'tag-9', text: 'No complex jargon', category: 'Persona Style', selected: false },
+      // Reasoning Help
+      { id: 'tag-5', text: 'Step-by-step explanation', category: 'Reasoning Help', selected: false },
       
       // Task Instruction
-      { id: 'tag-10', text: 'Explain core concepts', category: 'Task Instruction', selected: false },
-      { id: 'tag-11', text: 'Create practice quiz', category: 'Task Instruction', selected: false }
+      { id: 'tag-6', text: 'Explain core concepts', category: 'Task Instruction', selected: false },
+      { id: 'tag-7', text: 'Create practice quiz', category: 'Task Instruction', selected: false }
     ];
     
     this._availableTags.set(fallbackTags);
   }
   
-  // Toggle tag selection (max 8)
+  // Load output suggestions from backend
+  async loadOutputSuggestions(): Promise<void> {
+    const topic = this._topic();
+    const intent = this._intent();
+    const detectedMeta = this._detectedMeta();
+    
+    if (!topic || topic.length < 4 || !intent) {
+      return;
+    }
+    
+    // Check if offline
+    if (this._isOffline()) {
+      this.useFallbackOutputTags();
+      return;
+    }
+    
+    try {
+      const endpoint = `${environment.apiBase}/tags/output-suggestions`;
+      const selectedSmartTagTexts = this._selectedTags().map(t => t.text);
+      const selectedOutputTagTexts = this._selectedOutputTags().map(t => t.text);
+      
+      const response$ = this.http.post<OutputSuggestionsResponse>(endpoint, {
+        topic,
+        intent,
+        persona: detectedMeta?.class ? `Class ${detectedMeta.class} student` : 'student',
+        selectedSmartTags: selectedSmartTagTexts,
+        selectedOutputTags: selectedOutputTagTexts
+      });
+      
+      const response = await firstValueFrom(response$);
+      
+      if (response.success) {
+        const outputTags: OutputTagItem[] = [];
+        let idCounter = 1;
+        
+        // Add 2 defaults first
+        outputTags.push({
+          id: `output-default-${idCounter++}`,
+          text: 'Bullet points',
+          isDefault: true,
+          selected: false
+        });
+        outputTags.push({
+          id: `output-default-${idCounter++}`,
+          text: 'Short summary',
+          isDefault: true,
+          selected: false
+        });
+        
+        // Add 3 AI suggestions
+        (response.suggestions || []).slice(0, 3).forEach(text => {
+          outputTags.push({
+            id: `output-ai-${idCounter++}`,
+            text,
+            isDefault: false,
+            selected: false
+          });
+        });
+        
+        this._outputTags.set(outputTags);
+        
+        // Auto-select "Bullet points" if no output tags selected
+        if (this._selectedOutputTags().length === 0) {
+          const bulletPoints = outputTags[0];
+          this._selectedOutputTags.set([{ ...bulletPoints, selected: true }]);
+          this._outputTags.set(outputTags.map(t => 
+            t.id === bulletPoints.id ? { ...t, selected: true } : t
+          ));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading output suggestions:', error);
+      this.useFallbackOutputTags();
+    }
+  }
+  
+  // Fallback output tags
+  private useFallbackOutputTags(): void {
+    const fallbackTags: OutputTagItem[] = [
+      { id: 'output-1', text: 'Bullet points', isDefault: true, selected: false },
+      { id: 'output-2', text: 'Short summary', isDefault: true, selected: false },
+      { id: 'output-3', text: 'Numbered list format', isDefault: false, selected: false },
+      { id: 'output-4', text: 'Table with columns', isDefault: false, selected: false },
+      { id: 'output-5', text: 'Question answer pairs', isDefault: false, selected: false }
+    ];
+    
+    this._outputTags.set(fallbackTags);
+    
+    // Auto-select "Bullet points"
+    if (this._selectedOutputTags().length === 0) {
+      const bulletPoints = fallbackTags[0];
+      this._selectedOutputTags.set([{ ...bulletPoints, selected: true }]);
+      this._outputTags.set(fallbackTags.map(t => 
+        t.id === bulletPoints.id ? { ...t, selected: true } : t
+      ));
+    }
+  }
+  
+  // Toggle output tag selection
+  toggleOutputTagSelection(tagId: string): void {
+    const outputTags = this._outputTags();
+    const selectedOutputTags = this._selectedOutputTags();
+    const selectedSmartTags = this._selectedTags();
+    
+    const tag = outputTags.find(t => t.id === tagId);
+    if (!tag) return;
+    
+    const isSelected = selectedOutputTags.some(t => t.id === tagId);
+    
+    if (isSelected) {
+      // Deselect
+      const updated = outputTags.map(t => 
+        t.id === tagId ? { ...t, selected: false } : t
+      );
+      this._outputTags.set(updated);
+      this._selectedOutputTags.set(selectedOutputTags.filter(t => t.id !== tagId));
+    } else {
+      // Check total limit (smart tags + output tags <= 10)
+      const totalSelected = selectedSmartTags.length + selectedOutputTags.length;
+      if (totalSelected >= 10) {
+        this._error.set('Maximum 10 tags total (smart + output) can be selected');
+        return;
+      }
+      
+      const updated = outputTags.map(t => 
+        t.id === tagId ? { ...t, selected: true } : t
+      );
+      this._outputTags.set(updated);
+      this._selectedOutputTags.set([...selectedOutputTags, { ...tag, selected: true }]);
+      this._error.set(null);
+    }
+  }
+  
+  // Toggle tag selection (max 10 total with output tags)
   toggleTagSelection(tagId: string): void {
     const availableTags = this._availableTags();
     const selectedTags = this._selectedTags();
@@ -309,9 +470,10 @@ export class SmartTagService {
       // Re-detect conflicts after deselection
       this.detectConflicts();
     } else {
-      // Select (enforce max 8)
-      if (selectedTags.length >= 8) {
-        this._error.set('Maximum 8 tags can be selected');
+      // Select (enforce max 10 total with output tags)
+      const totalSelected = selectedTags.length + this._selectedOutputTags().length;
+      if (totalSelected >= 10) {
+        this._error.set('Maximum 10 tags total (smart + output) can be selected');
         return;
       }
       
@@ -375,6 +537,7 @@ export class SmartTagService {
     const topic = this._topic();
     const intent = this._intent();
     const selectedTags = this._selectedTags();
+    const selectedOutputTags = this._selectedOutputTags();
     
     if (!topic || !intent) {
       this._error.set('Please provide topic and intent');
@@ -404,13 +567,21 @@ export class SmartTagService {
       requirements.push(`${index + 1}. ${tag.text}`);
     });
     
+    // Build output format (default to Bullet points if none selected)
+    const outputFormats = selectedOutputTags.length > 0 
+      ? selectedOutputTags.map(t => t.text)
+      : ['Bullet points'];
+    
     // Assemble final prompt
     const finalPrompt = `${roleInstruction}
 
 Topic: "${topic}"
 
-Requirements:
+Key Requirements:
 ${requirements.join('\n')}
+
+Output Format:
+${outputFormats.map((f, i) => `${i + 1}. ${f}`).join('\n')}
 
 Please provide a clear, student-friendly explanation.`;
 
@@ -438,6 +609,8 @@ Please provide a clear, student-friendly explanation.`;
     this._detectedMeta.set(null);
     this._availableTags.set([]);
     this._selectedTags.set([]);
+    this._outputTags.set([]);
+    this._selectedOutputTags.set([]);
     this._finalPrompt.set('');
     this._isLoading.set(false);
     this._error.set(null);
