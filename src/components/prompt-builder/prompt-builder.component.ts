@@ -14,6 +14,32 @@ const PERSONA_INTENTS: Record<Persona, string[]> = {
   'Teacher': ['Generate Questions', 'Create Explanation', 'Simplify Weak', 'Use Analogy', 'Latest Research']
 };
 
+const INTENT_OUTPUT_DEFAULTS: Record<string, string[]> = {
+  // Teacher
+  'Generate Questions': ['Multiple Choice', 'With Answer Key'],
+  'Create Explanation': ['Bullet Points', 'Step-by-Step'],
+  'Simplify Weak': ['Simple Analogy', 'Bullet Points'],
+  'Use Analogy': ['Story Format', 'Comparison Table'],
+  'Latest Research': ['Summary Report', 'Key Findings List'],
+  
+  // Student
+  'Homework Help': ['Step-by-Step', 'Simple Language'],
+  'Project Ideas': ['List of Ideas', 'Detailed Plan'],
+  'Learn Concept': ['Simple Explanation', 'Real World Examples'],
+  'Exam Prep': ['Practice Questions', 'Key Points Summary'],
+  'Clear Doubt': ['Direct Answer', 'Detailed Explanation'],
+
+  // Parent
+  'Help Homework': ['Step-by-Step', 'Simple Language'],
+  'Help Project': ['List of Ideas', 'Materials List'],
+  'Explain Simply': ['Simple Analogy', 'Real Life Examples'],
+  'Find Resources': ['List of Links', 'Book Recommendations'],
+  'Play & Learn': ['Game Instructions', 'Activity Steps'],
+
+  // Fallback
+  'default': ['Bullet points', 'Short summary']
+};
+
 const CONFLICT_PAIRS = [
   ['Brief Topic Summary', 'Deep Dive Explanation'],
   ['Step By Step Guide', 'Brief Topic Summary']
@@ -238,10 +264,13 @@ export class PromptBuilderComponent {
       }
 
       // Handle Output Tags
-      const outputTags = [
-        { id: 'def-1', text: 'Bullet points', isDefault: true },
-        { id: 'def-2', text: 'Short summary', isDefault: true }
-      ];
+      const defaultOutputs = INTENT_OUTPUT_DEFAULTS[intent] || INTENT_OUTPUT_DEFAULTS['default'];
+      
+      const outputTags = defaultOutputs.map((text, idx) => ({ 
+        id: `def-${idx}`, 
+        text, 
+        isDefault: true 
+      }));
       
       if (outputResponse.success && outputResponse.suggestions) {
         outputResponse.suggestions.slice(0, 3).forEach((text, idx) => {
@@ -251,7 +280,7 @@ export class PromptBuilderComponent {
       this.availableOutputTags.set(outputTags);
       
       if (resetSelection) {
-        this.selectedOutputTags.set(['Bullet points']);
+        this.selectedOutputTags.set([defaultOutputs[0]]);
       }
 
     } finally {
